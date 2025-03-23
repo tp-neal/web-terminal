@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Web-Based Terminal</title>
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <div class="terminal">
+            <!-- Header Bar -->
+            <header class="terminal__header">
+                <h1 class="terminal__title">Null-Terminal</h1>
+                <ol class="terminal__controls">
+                    <li
+                        class="terminal__button terminal__button--minimize"
+                        title="Minimize"
+                    ></li>
+                    <li
+                        class="terminal__button terminal__button--maximize"
+                        title="Maximize"
+                    ></li>
+                    <li
+                        class="terminal__button terminal__button--exit"
+                        title="Close"
+                    ></li>
+                </ol>
+            </header>
+            <!-- Terminal Window -->
+            <main class="terminal__window">
+                <ol class="terminal__list"></ol>
+            </main>
+        </div>
+        <script src="script.js"></script>
+    </body>
+</html>

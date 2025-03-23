@@ -1,0 +1,201 @@
+/*==================================================================================================
+    Reset/Normalize
+==================================================================================================*/
+*
+{
+    box-sizing: border-box;
+}
+
+html,
+body
+{
+    font-family: monospace;
+
+    overflow-x: hidden;
+
+    margin: 0;
+    padding: 0;
+
+    background-color: rgb(48, 48, 48);
+}
+
+main
+{
+    width: 100%;
+    height: 100%;
+    min-height: 650px;
+
+    background-color: rgb(80, 80, 80);
+}
+
+/*==================================================================================================
+    Media Queries
+==================================================================================================*/
+@media (max-width: 768px)
+{
+    .terminal-title
+    {
+        font-size: 13px;
+    }
+
+    .header-button
+    {
+        margin-right: 10px;
+    }
+}
+
+/*==================================================================================================
+    Terminal
+==================================================================================================*/
+.terminal
+{
+    font-family: monospace;
+
+    display: flex;
+    flex-direction: column;
+
+    width: 65%;
+    margin: 20px auto;
+
+    color: #fff;
+    border-radius: 10px;
+    background-color: #ff5c5c;
+    box-shadow: 0 5px 15px rgba(0,0,0,.3);
+}
+
+/*==================================================================================================
+    Header
+==================================================================================================*/
+.terminal__header
+{
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    width: 100%;
+    height: 100%px;
+
+    color: white;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    background-color: rgb(63, 63, 63);
+}
+
+.terminal__title
+{
+    font-size: 15px;
+
+    position: absolute;
+    left: 50%;
+
+    margin: 0;
+
+    transform: translateX(-50%);
+}
+
+.terminal__controls
+{
+    display: flex;
+
+    margin-left: auto;
+    padding: 0;
+
+    list-style-type: none;
+}
+
+.terminal__button
+{
+    font-size: 1.5em;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 1.5em;
+    height: 1.5em;
+    margin-right: 20px;
+
+    cursor: pointer;
+
+    border-radius: 50%;
+}
+
+.terminal__button::before
+{
+    color: rgba(255, 255, 255, .2);
+}
+
+.terminal__button:hover
+{
+    background-color: rgba(255, 255, 255, .2);
+}
+
+.terminal__button:hover::before
+{
+    color: rgba(255, 255, 255, .8);
+}
+
+.terminal__button--minimize::before
+{
+    content: '—';
+}
+
+.terminal__button--maximize::before
+{
+    content: '◻';
+}
+
+.terminal__button--exit::before
+{
+    content: '✕';
+}
+
+/*==================================================================================================
+    Window
+==================================================================================================*/
+.terminal__window
+{
+    margin: 0;
+    padding: 0;
+
+    list-style-type: none;
+
+    border-bottom-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+
+.terminal__list
+{
+    padding-right: 10px;
+    padding-left: 10px;
+
+    list-style-type: none;
+}
+
+.line__content
+{
+    display: inline;
+
+    white-space: pre-wrap;
+    word-break: break-word; /* Ensures words break properly */
+}
+
+.terminal__line
+{
+    font-size: 1.5em;
+}
+.line__user
+{
+    color: rgb(134, 255, 200);
+}
+.line__sign
+{
+    color: rgb(255, 162, 180);
+}
+
+:focus
+{
+    outline: none;
+}
