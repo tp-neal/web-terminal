@@ -5,284 +5,410 @@
 * @date: 03/23/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
-* @brief: ...
+* @brief: A web-based terminal emulator with command history and UI controls
+*
+    We start by assuming there is a terminal list in the HTML file. We retrieve this dom element,
+    as we will add individual list elements and the command line.
 *
 ==================================================================================================*/
 
 /*==================================================================================================
-    Terminal Module - Encapsulates all terminal functionality
+    Configuration
 ==================================================================================================*/
-const Terminal = (function() {
+const ELEMENT_CLASSES = {
+    wrapper: `terminal`,
 
-    /* ===== Class Definitions ===== */
-    class Caret {
-        constructor() {
-            this.sym = '█';
-            this.pos = 0;
-            this.visible = true;
+    header_container: `terminal__header`,
+    window_title: `terminal__title`,
+    window_buttons_wrapper: `terminal__controls`,
+    window_button: `terminal__button`,
+    minimize_button: `terminal__button--minimize`,
+    maximize_button: `terminal__button--maximize`,
+    exit_button: `terminal__button--exit`,
+
+    main_content: `terminal__window`,
+    command_list: `terminal__list`
+};
+
+const CONFIG = {
+    CARET_SYMBOL: '█',
+    CARET_BLINK_INTERVAL: 850,
+    USER: `user@system:`,
+    DEFAULT_DIRECTORY: `~`,
+    SIGN: `$`,
+    VERSION_INFO:   'Null-Terminal v0.1.0-alpha \\0\n' +
+                    '© 2025 Fake Inc\n' +
+                    'Build: 0x00FF-TERM-NULL\n' +
+                    '"Where strings end, possibilities begin."\n' +
+                    '------------------------------------------\n' +
+                    'The terminal where commands terminate, but ideas don\'t.\n' +
+                    'Running on NullOS kernel 3.14\n' +
+                    'Type \'help\' to begin or \'about\' for more information.\n' +
+                    '------------------------------------------\n\n'
+};
+
+/*==================================================================================================
+    Caret Class
+==================================================================================================*/
+class Caret {
+    constructor() {
+        this.sym = CONFIG.CARET_SYMBOL;
+        this.pos = 0;
+        this.visible = true;
+    }
+}
+
+/*==================================================================================================
+    Command Line Class
+==================================================================================================*/
+class CommandLine {
+    constructor(terminalElement, currentDirectory) {
+        this.terminalElement = terminalElement;
+        this.promptUser = CONFIG.USER;
+        this.promptDirectory = currentDirectory;
+        this.promptSign = CONFIG.SIGN;
+
+        // Initialize command line text and append caret
+        this.commandText = '';
+        this.caret = new Caret();
+        this.appendCaretToEnd();
+        
+        // Create DOM element
+        this.element = this.createCommandLineElement();
+
+        // Store reference to content span
+        this.contentSpan = this.element.querySelector('.line__content');
+    }
+
+    /*  DOM Manipulation
+    ***********************************************************************************************/
+    /**
+     * @brief Creates a new command line DOM element
+     * @returns DOM element for the command line
+     */
+    createCommandLineElement() {
+        const { li, contentSpan } = DOMHelper.createBaseLineElement(
+            `prompt`,
+            {
+                user: this.promptUser,
+                directory: this.promptDirectory,
+                sign: this.promptSign,
+            },
+            ''
+        );
+
+        // Set specific attributes
+        li.tabIndex = 0;
+        this.contentSpan = contentSpan;
+        this.contentSpan.textContent = this.getCommandTextWithCaret();
+        
+        // Add event listener to capture keystrokes
+        li.addEventListener('keydown', (event) => {
+            if (this.onKeyDown) {
+                this.onKeyDown(event);
+            }
+        });
+        
+        return li;
+    }
+
+    /**
+     * @brief Removes the command line element from the DOM
+     */
+    removeFromDOM() {
+        if (this.element && this.element.parentNode) {
+            this.element.parentNode.removeChild(this.element);
         }
     }
+
+    /*  Text Return
+    ***********************************************************************************************/
+    /**
+     * @brief Gets the command text with the caret inserted at the current position
+     * @returns Command text with caret
+     */
+    getCommandTextWithCaret() {
+        return this.commandText.substring(0, this.caret.pos) + 
+               this.caret.sym + 
+               this.commandText.substring(this.caret.pos);
+    }
+
+    /**
+     * @brief Returns a copy of the command text without the caret attached.
+     * @returns Pure command text without caret
+     */
+    getCommandTextWithoutCaret() {
+        return this.commandText;
+    }
     
-    class Prompt {
-        constructor() {
-            this.element = null;
-            this.content = "";
-            this.caret = new Caret();
+    /*  Text Modification
+    ***********************************************************************************************/
+    /**
+     * @brief Inserts a character into the current command line before the caret.
+     * @param {char} key Character to insert
+     */
+    insertCharacter(key) {
+        // Split the command text at the caret
+        const left_text = this.commandText.substring(0, this.caret.pos);
+        const right_text = this.commandText.substring(this.caret.pos);
+        
+        // Create new text with the character inserted
+        this.updateCommandText(left_text + key + right_text);
+        this.caret.pos++;
+        this.showCaret();
+    }
+
+    /**
+     * @brief Removes the character from the current command line before the caret.
+     */
+    removePreviousCharacter() {
+        if (this.caret.pos === 0) return; // skip if nothing to remove
+        
+        // Split the command text at the caret
+        const left_text = this.commandText.substring(0, this.caret.pos);
+        const right_text = this.commandText.substring(this.caret.pos);
+        
+        // Create new command text with the character removed
+        this.updateCommandText(left_text.substring(0, left_text.length-1) + right_text);
+        this.caret.pos--;
+        this.showCaret();
+    }
+
+    /**
+     * @brief Removes the character from the current command line after the caret.
+     */
+    removeNextCharacter() {
+        if (this.caret.pos === this.commandText.length) return;
+
+        // Split the command text at the caret
+        const left_text = this.commandText.substring(0, this.caret.pos);
+        const right_text = this.commandText.substring(this.caret.pos);
+
+        // Create new command text with the character removed
+        this.updateCommandText(left_text + right_text.substring(1));
+        this.showCaret();
+    }
+
+    /**
+     * @brief Updates the stored command text and the DOM.
+     */
+    updateCommandText(commandText) {
+        this.commandText = commandText; // Updates this objects copy of the text
+        if (this.contentSpan) {
+            this.contentSpan.textContent = this.getCommandTextWithCaret(); // Updates the DOM with caret
         }
-    
-        /**
-         * @brief Inserts a key into the current line before the caret
-         * @param {*} key Key to insert
-         */
-        insertCharacter(key) {
-            // Split the content at the caret
-            const left_text = this.content.substring(0, this.caret.pos);
-            const right_text = this.content.substring(this.caret.pos+1);
-            
-            // Create new content with the character inserted
-            this.updateContent(left_text + key + this.caret.sym + right_text);
+    }
+
+    /*  Caret Specific
+    ***********************************************************************************************/
+    /**
+     * @brief Updates the position of the caret within the command text, moving it left or right.
+     * @param {string} direction Direction of caret movement ("left" or "right")
+     * @returns Early return if caret is at left or right border
+     */
+    moveCaret(direction) {
+        if (direction === 'left') {
+            if (this.caret.pos <= 0) return;
+            this.caret.pos--;
+        } else if (direction === 'right') {
+            if (this.caret.pos >= this.commandText.length) return;
             this.caret.pos++;
         }
-    
-        /**
-         * @brief Removes a character from the current line before the caret
-         */
-        removeCharacter() {
-            if (this.caret.pos == 0) return; // skip if nothing to remove
-            
-            // Split the content at the caret
-            const left_text = this.content.substring(0, this.caret.pos);
-            const right_text = this.content.substring(this.caret.pos+1);
-            
-            // Create new content with the character removed
-            this.updateContent(left_text.substring(0, left_text.length-1) + this.caret.sym + right_text);
-            this.caret.pos--;
-        }
 
-        /**
-         * @brief Updates the position of the caret, left or right
-         * @param {*} direction Direction of caret movement
-         * @returns Early return if caret is at left or right border
-         */
-        moveCaret(direction) {
-            // Split the content at the caret
-            const left_text = this.content.substring(0, this.caret.pos);
-            const right_text = this.content.substring(this.caret.pos+1);
-            let new_content = "";
-
-            if (direction === 'left') {
-                if (this.caret.pos <= 0) return;
-                
-                // Shift the position one left
-                const prev_char = left_text.charAt(left_text.length-1);
-                new_content = left_text.substring(0, left_text.length-1) + this.caret.sym + prev_char + right_text;
-                this.caret.pos--;
-    
-            } else if (direction === 'right') {
-                if (this.caret.pos >= this.content.length-1) return;
-                
-                // Shift the position one right
-                const next_char = right_text.charAt(0);
-                new_content = left_text + next_char + this.caret.sym + right_text.substring(1);
-                this.caret.pos++;
-            }
-
-            this.updateContent(new_content);
-        }
-    
-        /**
-         * @brief Toggles caret visibility
-         */
-        toggleCaret() {
-            // Split the content at the caret
-            const left_text = this.content.substring(0, this.caret.pos);
-            const right_text = this.content.substring(this.caret.pos+1);
-    
-            if (this.caret.visible) {
-                this.hideCaret();
-            }
-            else {
-                this.showCaret();
-            }
-        }
-
-        /**
-         * @brief This function is used to hide the caret. It functions by replacing the caret
-         * charater with a space instead of removing it, in the case the line somehow becomes 
-         * active again
-         */
-        hideCaret() {
-            // Split the content at the caret
-            const left_text = this.content.substring(0, this.caret.pos);
-            const right_text = this.content.substring(this.caret.pos+1);
-
-            this.updateContent(left_text + ` ` + right_text);
-            this.caret.visible = false;
-        }
-
-        /**
-         * 
-         */
-        showCaret() {
-            // Split the content at the caret
-            const left_text = this.content.substring(0, this.caret.pos);
-            const right_text = this.content.substring(this.caret.pos+1);
-
-            this.updateContent(left_text + this.caret.sym + right_text);
-            this.caret.visible = true;
-        }
-
-        /**
-         * @brief Returns a copy of the prompt text without the caret attatched
-         * @returns (see above)
-         */
-        stripCaret() {
-            const left_text = this.content.substring(0, this.caret.pos);
-            const right_text = this.content.substring(this.caret.pos+1);
-            return left_text + right_text;
-        }
-
-        /**
-         * @brief Moves the caret to the end of the text
-         */
-        moveCaretToEnd() {
-            // TODO: Create a more efficient impelementation
-            for (let i = 0; i < this.content.length; i++) {
-                this.moveCaret(`right`);
-            }
-        }
-    
-        appendCaretToEnd() {
-            this.updateContent(this.content += this.caret.sym);
-            this.caret.pos = this.content.length-1;
-        }
-
-        /**
-         * @brief Updates the prompt's copy of the content, and updates the DOM
-         */
-        updateContent(content) {
-            this.content = content; // Updates this objects copy of the text
-            this.element.querySelector('.line__content').textContent = content; // Updates the DOM
-        }
-
-        printContent() {
-            console.log(`Content: "${this.content}"`);
-        }
-
-        printCaretPos() {
-            console.log(`Caret Pos: ${this.caret.pos}`);
-        }
+        this.showCaret();
     }
 
-    class Terminal_List {
-        constructor() {
-            this.element = document.querySelector(`.${ELEMENT_IDS.command_list}`);
-            if (!this.element) {
-                console.error("Terminal list element not found!");
-            }
-            this.display = new Array(); // Commands being displayed on the screen
-            this.buffer = ""; // Holds the current line text when traversing old command entries
-            this.history = new Array(); // History of commands that have been processed
-            this.iter = 0;
-        }
-
-        addToHistory(content) {
-            this.history.push(content);
-            this.iter = this.history.length;
-        }
-
-        addToDisplay(content) {
-            this.display.push(content);
-        }
-
-        printHistory() {
-            let str = "";
-            str += `[`;
-            for (let i = 0; i < this.history.length; i++) {
-                str += `${this.history[i]}`;
-                if (i < this.history.length-1)
-                    str += `,`;
-            }
-            str += `]`;
-            console.log(str)
-        }
+    /**
+     * @brief Toggles caret visibility. Used with setInterval() to periodically blink the caret.
+     */
+    toggleCaret() {
+        this.caret.visible ? this.hideCaret() : this.showCaret();
     }
 
-    /* ===== Variables ===== */
-    const ELEMENT_IDS = {
-        wrapper: `terminal`,
+    /**
+     * @brief Used to hide the caret in the displayed command text.
+     */
+    hideCaret() {
+        if (this.contentSpan) {
+            this.contentSpan.textContent = this.commandText;
+        }
+        this.caret.visible = false;
+    }
 
-        header_container: `terminal__header`,
-        window_title: `terminal__title`,
-        window_buttons_wrapper: `terminal__controls`,
-        window_button: `terminal__button`,
-        minimize_button: `terminal__button--minimize`,
-        maximize_button: `terminal__button--maximize`,
-        exit_button: `terminal__button--exit`,
+    /**
+     * @brief Used to show the caret in the displayed command text.
+     */
+    showCaret() {
+        if (this.contentSpan) {
+            this.contentSpan.textContent = this.getCommandTextWithCaret();
+        }
+        this.caret.visible = true;
+    }
 
-        main_content: `terminal__window`,
-        command_list: `terminal__list`
-    };
+    /**
+     * @brief Positions the caret at the end of the command text.
+     */
+    appendCaretToEnd() {
+        this.caret.pos = this.commandText.length;
+        this.showCaret();
+    }
+}
 
-    let prompt = null;
-    let terminal_list = null;
-    
-    /* ===== Initialization ===== */
-    function init() {
-        console.log("Terminal initializing...");
-        
-        // Create Integral Elements
-        terminal_list = new Terminal_List();
-        resetPrompt();
-        if (!prompt) {
-            console.error("Failed to create prompt object!");
-            return false;
+/*==================================================================================================
+    Command History Class
+==================================================================================================*/
+class CommandHistory {
+    constructor() {
+        this.commands = [];
+        this.commandBuffer = ``;
+        this.iter = 0;
+    }
+
+    /**
+     * @brief Adds a command to the history
+     * @param {string} commandText Command to add
+     */
+    addToHistory(commandText) {
+        this.commands.push(commandText);
+        this.iter++;
+    }
+
+    /**
+     * @brief Gets the previous command from history
+     * @returns Previous command or empty string if at start
+     */
+    getPrevious() {
+        if (this.iter > 0) this.iter--;
+        return this.commands[this.iter];
+    }
+
+    /**
+     * @brief Gets the next command from history
+     * @returns Next command or command buffer if at end
+     */
+    getNext() {
+        if (this.iter < this.commands.length) this.iter++;
+        if (this.iter < this.commands.length) 
+            return this.commands[this.iter];
+        else 
+            return this.commandBuffer;
+    }
+
+    /**
+     * @brief Gets the number of commands in history
+     * @returns Size of command history
+     */
+    size() {
+        return this.commands.length;
+    }
+}
+
+/*==================================================================================================
+    Terminal Class
+==================================================================================================*/
+class Terminal { 
+    constructor() {
+        // Find terminal wrapper
+        this.terminalElement = document.querySelector(`.` + ELEMENT_CLASSES.wrapper);
+        if (!this.terminalElement) {
+            console.error(`Terminal wrapper not found in the DOM`);
+            return;
         }
 
-        // Setup Events
-        setupHeaderButtons();
-        setInterval(() => prompt.toggleCaret(), 850);
+        // Find terminal display list
+        this.terminalDisplay = document.querySelector(`.` + ELEMENT_CLASSES.command_list);
+        if (!this.terminalDisplay) {
+            console.error('Terminal display list not found in the DOM');
+            return;
+        }
+
+        // Initialize working directory
+        this.currentDirectory = CONFIG.DEFAULT_DIRECTORY;
         
-        // Return Success
+        // Printout version information
+        this.printVersionInfo();
+
+        // Initialize components
+        this.commandHistory = new CommandHistory();
+        this.caretBlinkInterval = CONFIG.CARET_BLINK_INTERVAL;
+        this.commandLine = new CommandLine(this.terminalElement, this.currentDirectory);
+
+        // Setup command line key handling
+        this.handleKeydown = this.handleKeydown.bind(this);
+        this.commandLine.onKeyDown = this.handleKeydown;
+
+        // Add command line to list
+        this.terminalDisplay.appendChild(this.commandLine.element);
+    }
+
+    init() {
+
+        // Setup header buttons
+        this.setupHeaderButtons();
+        
+        // Setup caret blinking
+        this.caretBlinkInterval = setInterval(() => {
+            if (this.commandLine) {
+                this.commandLine.toggleCaret();
+            }
+        }, this.caretBlinkInterval);
+        
+        // Return success
         return true;
     }
-    
-    /*==============================================================================================
-        Event Handling
-    ==============================================================================================*/
-    /* ===== Keystroke Management ===== */
+
+    /*  Event Handling
+    ***********************************************************************************************/
+    /**
+     * @brief Setup header button event listeners
+     */
+    setupHeaderButtons() {
+        const buttons = [
+            { id: ELEMENT_CLASSES.minimize_button,  handler: () => alert('Minimized terminal') },
+            { id: ELEMENT_CLASSES.maximize_button,  handler: () => alert('Maximized terminal') },
+            { id: ELEMENT_CLASSES.exit_button,      handler: () => alert('Exited terminal') }
+        ];
+        
+        buttons.forEach(button => {
+            const element = document.querySelector(`.` + button.id);
+            if (element) {
+                element.addEventListener('click', button.handler);
+            }
+        });
+    }
+
     /**
      * @brief Initializes keystroke events
      * @param {*} event 
      */
-    function handleKeydown(event) {
+    handleKeydown(event) {
         switch (event.key) {
 
             // Carret Shifting
             case 'ArrowRight':
-                prompt.moveCaret('right');
+                this.commandLine.moveCaret('right');
                 break;
             case 'ArrowLeft':
-                prompt.moveCaret('left');
+                this.commandLine.moveCaret('left');
                 break;
             
             // Command History
             case 'ArrowUp':
-                navigateCommandHistory('up');
+                this.navigateCommandHistory('previous');
                 break;
             case 'ArrowDown':
-                navigateCommandHistory('down');
+                this.navigateCommandHistory('next');
                 break;
 
             // Command Requesting
             case 'Enter':
-                executeCommand();
+                this.executeCommand();
                 break;
             case 'Delete':
-                clearTerminal();
+                this.commandLine.removeNextCharacter();
                 break;
             case 'Backspace':
-                prompt.removeCharacter();
+                this.commandLine.removePreviousCharacter();
                 break;
 
             // Explicitly ignore special keys
@@ -297,7 +423,7 @@ const Terminal = (function() {
             // Default: append key to content if valid character
             default:
                 if (event.key.length === 1)
-                    prompt.insertCharacter(event.key);
+                    this.commandLine.insertCharacter(event.key);
                 break;
         }
 
@@ -305,155 +431,166 @@ const Terminal = (function() {
         //event.preventDefault();
     }
 
+    /*  Command Management
+    ***********************************************************************************************/
     /**
-     * @brief Setup header button event listeners
+     * @brief Executes the current command
      */
-    function setupHeaderButtons() {
-        const buttons = [
-            { id: ELEMENT_IDS.minimize_button, handler: () => alert('Minimized terminal') },
-            { id: ELEMENT_IDS.maximize_button, handler: () => alert('Maximized terminal') },
-            { id: ELEMENT_IDS.exit_button, handler: () => alert('Exited terminal') }
-        ];
-        
-        buttons.forEach(button => {
-            const element = document.getElementById(button.id);
-            if (element) {
-                element.addEventListener('click', button.handler);
-            }
-        });
-    }
+    executeCommand() {
+        // Get command text without caret
+        const commandText = this.commandLine.getCommandTextWithoutCaret();
 
-    /*==============================================================================================
-        Command Management
-    ==============================================================================================*/
-    function navigateCommandHistory(direction) {
-        console.log(`Before:`);
-        terminal_list.printHistory();
-    
-        if (direction === 'up') {
-            // Store current typed command if at the end before navigating up
-            if (terminal_list.iter === terminal_list.history.length) {
-                terminal_list.buffer = prompt.stripCaret();
-            }
-            // Decrement iterator if possible
-            if (terminal_list.iter > 0) {
-                terminal_list.iter--;
-            }
-            // Update prompt with history entry
-            prompt.updateContent(terminal_list.history[terminal_list.iter]);
-            prompt.appendCaretToEnd();
+        // Split and handle command
+        const tokens = commandText.split(' ');
+        const command = tokens[0];
+        switch(command) {
 
-        } else if (direction === 'down') {
-            // Increment iterator if possible
-            if (terminal_list.iter < terminal_list.history.length) {
-                terminal_list.iter++;
-            }
-            // Retrieve buffer if at the end, else history entry
-            if (terminal_list.iter === terminal_list.history.length) {
-                prompt.updateContent(terminal_list.buffer);
-            } else {
-                prompt.updateContent(terminal_list.history[terminal_list.iter]);
-            }
-            prompt.appendCaretToEnd();
+            case 'clear':
+                this.clearTerminal();
+                return;
+
+            default:
+                console.error(`Unrecognized command: ${command}`);
+                break;;
         }
+        
+        // Remove current command line from display
+        this.commandLine.removeFromDOM();
+        
+        // Add command to display as completed line
+        this.addLineToTerminal(
+            `prompt`, 
+            { 
+                user: this.commandLine.promptUser,
+                directory: this.commandLine.promptDirectory,
+                sign: this.commandLine.promptSign 
+            },
+            this.commandLine.commandText
+        )
+        
+        // Add command to history if not empty
+        if (commandText.trim().length > 0) {
+            this.commandHistory.addToHistory(commandText);
+            
+            // Process command (placeholder - would be replaced with actual command handling)
+            // For demo, just echo the command as output
+            if (false)
+                this.addLineToTerminal(`output`, null,`THIS IS TEST OUTPUT...`);
+        }
+        
+        // Create new command line
+        this.createNewCommandLine();
+    }
+
+    /**
+     * @brief Navigates through command history
+     * @param {string} direction Direction to navigate ('previous' or 'next')
+     */
+    navigateCommandHistory(direction) {
+        let retrievedCommand = '';
+
+        if (direction === 'previous') {
+            if (this.commandHistory.iter === this.commandHistory.size()) {
+                this.commandHistory.commandBuffer = this.commandLine.getCommandTextWithoutCaret();
+            }
+            retrievedCommand = this.commandHistory.getPrevious();
+        } else if (direction === 'next') {
+            retrievedCommand = this.commandHistory.getNext();
+        }
+
+        // Update the command line with the retrieved command
+        this.commandLine.updateCommandText(retrievedCommand);
+        this.commandLine.appendCaretToEnd();
+    }
+
+    /**
+     * @brief Creates a new command line
+     */
+    createNewCommandLine() {
+        // Create new command line
+        this.commandLine = new CommandLine(this.terminalElement, this.currentDirectory);
+        
+        // Add command line to terminal display
+        this.terminalDisplay.appendChild(this.commandLine.element);
+
+        // Focus the element
+        this.commandLine.element.focus();
+        
+        // Set up keydown handler
+        this.commandLine.onKeyDown = this.handleKeydown;
+    }
+
+    /*  Display Manipulation
+    ***********************************************************************************************/
+    /**
+     * 
+     */
+    addLineToTerminal(type, promptInfo, content) {
+        const { li } = DOMHelper.createBaseLineElement(type, promptInfo, content);
+        this.terminalDisplay.appendChild(li);
+    }
     
-        console.log(`After:`);
-        terminal_list.printHistory();
-    }
-
-    function executeCommand() {
-        // Remove the active prompt list entry
-        removePreviousPrompt();
-
-        // Hide caret and add unactive prompt to list
-        let command = prompt.stripCaret();
-        addLineToTerminal(`prompt`, command);
-
-        // Add command to history and display history
-        terminal_list.addToDisplay(command);
-        if (command.length > 0)
-            terminal_list.addToHistory(command);
-
-        // TODO: Execute based on command
-
-        // Reset prompt
-        resetPrompt();
-    }
-
-    function resetPrompt() {
-        prompt = new Prompt();
-        addLineToTerminal('prompt', `${prompt.caret.sym}`);
-
-        // Assign prompt attributes
-        prompt.element = terminal_list.element.lastElementChild;
-        prompt.content = prompt.element.querySelector('.line__content').textContent;
-
-        // Focus the active line and monitor input
-        prompt.element.addEventListener('keydown', handleKeydown);
-        prompt.element.focus();
-    }
-
-    function removePreviousPrompt() {
-        terminal_list.element.removeChild(terminal_list.element.lastElementChild);
-    }
-
-    /*==============================================================================================
-        Terminal Manipulation
-    ==============================================================================================*/
     /**
      * @brief Clears the terminal and inserts a blank prompt line
      */
-    function clearTerminal() {
-        terminal_list.element.innerHTML = '';
-        terminal_list.display.length = 0;
-        resetPrompt();
+    clearTerminal() {
+        // Clear terminal display
+        this.terminalDisplay.innerHTML = '';
+        
+        // Create new command line
+        this.createNewCommandLine();
     }
 
     /**
-     * @brief Adds a new line to the terminal
-     * @param {*} type Type of line to add (prompt : output : error)
-     * @param {*} content Content to populate the line with
-     * @returns 
-    */
-    function addLineToTerminal(type, content) {
-        const new_line_html = getTerminalLineHTML(type, content);
-        terminal_list.element.insertAdjacentHTML('beforeend', new_line_html);
-        return terminal_list.element.lastElementChild;
-    }
-
-    /**
-     * @brief Format the HTML of the new terminal line
-     * @param {*} type Type of terminal line (prompt : output : error)
-     * @param {*} content Text to populate the line with
-     * @returns HTML of formatted line
+     * 
      */
-    function getTerminalLineHTML(type, content) {
-        if (type === 'prompt') {
-            return /*html*/`
-            <li class="terminal__line terminal__line--prompt" tabindex="0">
-                <span class="line__user">user@system:<span class="line__sign">~$</span></span>
-                <span class="line__content">${content}</span>
-            </li>`;
-        } else if (type === 'output') {
-            return /*html*/`
-            <li class="terminal__line terminal__line--output">
-                <span class="line__content">${content}</span>
-            </li>`;
-        } else if (type === 'error') {
-            return /*html*/`
-            <li class="terminal__line terminal__line--error">
-                <span class="line__content">${content}</span>
-            </li>`;
-        }
+    printVersionInfo() {
+        this.addLineToTerminal('output', null, CONFIG.VERSION_INFO);
     }
-    
-    // Public API - only expose what needs to be public
-    return {
-        init: init,
-    };
-})();
+}
+/*==================================================================================================
+    DOM Helper Class
+==================================================================================================*/
+class DOMHelper {
+    static createBaseLineElement(type, promptInfo, content) {
+        const {user, directory, sign} = promptInfo || {};
+        const li = document.createElement('li');
+        li.className = `terminal__line terminal__line--${type}`;
 
+        // This is the user section of the commandline ex. `user@system:`
+        const userSpan = document.createElement('span');
+        userSpan.className = 'line__user';
+        userSpan.textContent = user || '';
+
+        // This is the directory of the commandline ex. `~` or `~/Documents/folder/`
+        const dirSpan = document.createElement('span');
+        dirSpan.className = 'line__dir';
+        dirSpan.textContent = directory || '';
+
+        // This is simply the symbol that appears at the end of the prompt ex. `$`
+        const signSpan = document.createElement('span');
+        signSpan.className = 'line__sign';
+        signSpan.textContent = sign || '';
+
+        // This is where all typed content will be entered ex. `cd path/to/dir/`
+        const contentSpan = document.createElement('span');
+        contentSpan.className = 'line__content';
+        contentSpan.textContent = content || '';
+
+        if (user) li.appendChild(userSpan);
+        if (directory) li.appendChild(dirSpan)
+        if (sign) li.appendChild(signSpan);
+        li.appendChild(contentSpan);
+
+        return { li, contentSpan, userSpan, dirSpan, signSpan };
+    }
+}
+
+/*==================================================================================================
+    Invokation
+==================================================================================================*/
 // Initialize terminal when the document is ready
-document.addEventListener('DOMContentLoaded', function() {
-    Terminal.init();
+document.addEventListener('DOMContentLoaded', () => {
+    const terminal = new Terminal();
+    terminal.init();
 });

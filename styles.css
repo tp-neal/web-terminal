@@ -54,7 +54,8 @@ main
     display: flex;
     flex-direction: column;
 
-    width: 65%;
+    min-width: 10%;
+    max-width: 80%;
     margin: 20px auto;
 
     color: #fff;
@@ -174,9 +175,19 @@ main
     list-style-type: none;
 }
 
+.line__user .line__sign
+{
+    display: inline-block;
+
+    margin: 0;
+    padding: 0;
+}
+
 .line__content
 {
-    display: inline;
+    display: inline-block;
+
+    padding-left: 10px;
 
     white-space: pre-wrap;
     word-break: break-word; /* Ensures words break properly */
@@ -189,6 +200,10 @@ main
 .line__user
 {
     color: rgb(134, 255, 200);
+}
+.line__dir
+{
+    color: rgb(168, 148, 255);
 }
 .line__sign
 {
