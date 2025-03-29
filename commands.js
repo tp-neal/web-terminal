@@ -64,6 +64,7 @@ export class ClearCommand extends Command {
     execute(args) {
         if (this.terminal.terminalDisplay) {
             this.terminal.terminalDisplay.innerHTML = '';
+            this.terminal.createNewCommandLine();
             return true;
         }
         return false;

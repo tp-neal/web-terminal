@@ -70,23 +70,23 @@ class Caret {
 
 /*================================================================================================*/
 class CommandLine {
-    constructor(terminalElement, currentDirectory) {
-        this.terminalElement = terminalElement;
-        this.promptUser = CONFIG.USER;
-        this.promptDirectory = currentDirectory;
-        this.promptSign = CONFIG.SIGN;
-
-        // Initialize command line text and append caret
-        this.commandText = '';
+    constructor(terminal) {
+        this.terminal = terminal;
+        this.prompt = { 
+            user: CONFIG.USER, 
+            dir: terminal.currentDirectory, 
+            sign: CONFIG.SIGN 
+        }
         this.caret = new Caret();
-        this.appendCaretToEnd();
+        this.leftText = ''; // text left of caret
+        this.rightText = ''; // text right of caret
         
         // Create DOM element
-        this.element = this.createCommandLineElement();
-
-        // Store reference to content span
-        this.contentSpan = this.element.querySelector('.line__content');
-        if (!this.contentSpan) console.error("CommandLine Error: Failed to find contentSpan during construction");
+        const elements = this.createCommandLineElement();
+        this.element = elements.li;
+        this.leftTextSpan = elements.leftTextSpan;
+        this.rightTextSpan = elements.rightTextSpan;
+        this.caretSpan = elements.caretSpan;
     }
 
     /*  DOM Manipulation
@@ -96,20 +96,50 @@ class CommandLine {
      * @returns DOM element for the command line
      */
     createCommandLineElement() {
-        const { li, contentSpan } = DOMHelper.createBaseLineElement(
-            `prompt`,
-            {
-                user: this.promptUser,
-                directory: this.promptDirectory,
-                sign: this.promptSign,
-            },
-            ''
-        );
+        // Create html list element
+        const li = document.createElement('li');
+        li.className = `terminal__line terminal__line--prompt`;
+
+        // Create the prompt section
+        const promptSpan = document.createElement('span');
+        promptSpan.className = 'line__prompt';
+        li.appendChild(promptSpan);
+
+        const userSpan = document.createElement('span');
+        userSpan.className = 'prompt__user';
+        userSpan.textContent = this.prompt.user;
+        promptSpan.appendChild(userSpan);
+
+        const dirSpan = document.createElement('span');
+        dirSpan.className = 'prompt__dir';
+        dirSpan.textContent = this.prompt.dir;
+        promptSpan.appendChild(dirSpan);
+
+        const signSpan = document.createElement('span');
+        signSpan.className = 'prompt__sign';
+        signSpan.textContent = this.prompt.sign;
+        promptSpan.appendChild(signSpan);
+
+        // Create the content section
+        const contentSpan = document.createElement('span');
+        contentSpan.className = 'line__content';
+        li.appendChild(contentSpan);
+
+        const leftTextSpan = document.createElement('span');
+        leftTextSpan.className = 'content__left';
+        contentSpan.appendChild(leftTextSpan);
+
+        const caretSpan = document.createElement('span');
+        caretSpan.className = 'content__caret';
+        caretSpan.textContent = this.caret.sym;
+        contentSpan.appendChild(caretSpan);
+
+        const rightTextSpan = document.createElement('span');
+        rightTextSpan.className = 'content__right';
+        contentSpan.appendChild(rightTextSpan);
 
         // Set specific attributes
         li.tabIndex = 0;
-        this.contentSpan = contentSpan;
-        this.contentSpan.textContent = this.getCommandTextWithCaret();
         
         // Add event listener to capture keystrokes
         li.addEventListener('keydown', (event) => {
@@ -118,7 +148,7 @@ class CommandLine {
             }
         });
         
-        return li;
+        return { li, leftTextSpan, rightTextSpan, caretSpan};
     }
 
     /**
@@ -129,27 +159,6 @@ class CommandLine {
             this.element.parentNode.removeChild(this.element);
         }
     }
-
-    /*  Text Return
-    ***********************************************************************************************/
-    /**
-     * @brief Gets the command text with the caret inserted at the current position
-     * @returns Command text with caret
-     */
-    getCommandTextWithCaret() {
-        return this.commandText.substring(0, this.caret.pos) + 
-               this.caret.sym + 
-               this.commandText.substring(this.caret.pos);
-    }
-
-    /**
-     * @brief Returns a copy of the command text without the caret attached.
-     * @returns Pure command text without caret
-     */
-    getCommandTextWithoutCaret() {
-        return this.commandText.substring(0, this.caret.pos) + 
-               this.commandText.substring(this.caret.pos);
-    }
     
     /*  Text Modification
     ***********************************************************************************************/
@@ -158,14 +167,10 @@ class CommandLine {
      * @param {char} key Character to insert
      */
     insertCharacter(key) {
-        // Split the command text at the caret
-        const left_text = this.commandText.substring(0, this.caret.pos);
-        const right_text = this.commandText.substring(this.caret.pos);
-        
-        // Create new text with the character inserted
-        this.updateCommandText(left_text + key + right_text);
+        this.leftText += key;
         this.caret.pos++;
-        this.showCaret();
+
+        this.updateDomText();
     }
 
     /**
@@ -173,43 +178,23 @@ class CommandLine {
      */
     removePreviousCharacter() {
         if (this.caret.pos === 0) return; // skip if nothing to remove
-        
-        // Split the command text at the caret
-        const left_text = this.commandText.substring(0, this.caret.pos);
-        const right_text = this.commandText.substring(this.caret.pos);
-        
-        // Create new command text with the character removed
-        this.updateCommandText(left_text.substring(0, left_text.length-1) + right_text);
+        this.leftText = this.leftText.substring(0, this.leftText.length-1);
         this.caret.pos--;
-        this.showCaret();
+
+        this.updateDomText();
     }
 
     /**
      * @brief Removes the character from the current command line after the caret.
      */
     removeNextCharacter() {
-        if (this.caret.pos === this.commandText.length) return;
+        if (this.caret.pos === 0) return; // skip if nothing to remove
+        this.rightText = this.rightText.substring(1);
 
-        // Split the command text at the caret
-        const left_text = this.commandText.substring(0, this.caret.pos);
-        const right_text = this.commandText.substring(this.caret.pos);
-
-        // Create new command text with the character removed
-        this.updateCommandText(left_text + right_text.substring(1));
-        this.showCaret();
+        this.updateDomText();
     }
 
-    /**
-     * @brief Updates the stored command text and the DOM.
-     */
-    updateCommandText(commandText) {
-        this.commandText = commandText; // Updates this objects copy of the text
-        if (this.contentSpan) {
-            this.contentSpan.textContent = this.getCommandTextWithCaret(); // Updates the DOM with caret
-        }
-    }
-
-    /*  Caret Specific
+    /*  Caret Movement
     ***********************************************************************************************/
     /**
      * @brief Updates the position of the caret within the command text, moving it left or right.
@@ -219,15 +204,34 @@ class CommandLine {
     moveCaret(direction) {
         if (direction === 'left') {
             if (this.caret.pos <= 0) return;
+            const movedText = this.leftText[this.leftText.length-1];
+            this.leftText = this.leftText.substring(0, this.leftText.length-1);
+            this.rightText = movedText + this.rightText;
             this.caret.pos--;
         } else if (direction === 'right') {
-            if (this.caret.pos >= this.commandText.length) return;
+            if (this.caret.pos >= this.leftText.length + this.rightText.length) return;
+            const movedText = this.rightText[0];
+            this.rightText = this.rightText.substring(1);
+            this.leftText += movedText;
             this.caret.pos++;
         }
 
-        this.showCaret();
+        this.updateDomText();
     }
 
+    /**
+     * @brief Positions the caret at the end of the command text.
+     */
+    moveCaretToEnd() {
+        this.leftText += this.rightText
+        this.rightText = '';
+        this.caret.pos = this.leftText.length;
+        
+        this.updateDomText();
+    }
+
+    /*  Caret Visibility
+    ***********************************************************************************************/
     /**
      * @brief Toggles caret visibility. Used with setInterval() to periodically blink the caret.
      */
@@ -239,10 +243,7 @@ class CommandLine {
      * @brief Used to hide the caret in the displayed command text.
      */
     hideCaret() {
-        if (!this.contentSpan) return;
-        const left_text = this.commandText.substring(0, this.caret.pos);
-        const right_text = this.commandText.substring(this.caret.pos);
-        this.contentSpan.textContent = left_text + ' ' + right_text;
+        this.caretSpan.classList.add('content__caret--hidden');
         this.caret.visible = false;
     }
 
@@ -250,17 +251,29 @@ class CommandLine {
      * @brief Used to show the caret in the displayed command text.
      */
     showCaret() {
-        if (!this.contentSpan) return;
-        this.contentSpan.textContent = this.getCommandTextWithCaret();
+        this.caretSpan.classList.remove('content__caret--hidden');
         this.caret.visible = true;
     }
 
-    /**
-     * @brief Positions the caret at the end of the command text.
-     */
-    appendCaretToEnd() {
-        this.caret.pos = this.commandText.length;
-        this.showCaret();
+    /*  Text Return
+    ***********************************************************************************************/
+    getFullText() {
+        return this.leftText + this.rightText;
+    }
+
+    /*  Text Updating
+    ***********************************************************************************************/
+    setLeftText(left) {
+        this.leftText = left || '';
+    }
+
+    setRightText(right) {
+        this.rightText = right || '';
+    }
+
+    updateDomText(text) {
+        this.leftTextSpan.textContent = this.leftText;
+        this.rightTextSpan.textContent = this.rightText;
     }
 }
 
@@ -278,7 +291,7 @@ class CommandHistory {
 
         if (direction === 'previous') {
             if (this.iter === this.size()) {
-                this.commandBuffer = commandLine.getCommandTextWithoutCaret();
+                this.commandBuffer = commandLine.getFullText();
             }
             retrievedCommand = this.getPrevious();
         } else if (direction === 'next') {
@@ -286,8 +299,9 @@ class CommandHistory {
         }
 
         // Update the command line with the retrieved command
-        commandLine.updateCommandText(retrievedCommand);
-        commandLine.appendCaretToEnd();
+        commandLine.setLeftText(retrievedCommand);
+        commandLine.setRightText('');
+        commandLine.updateDomText(); 
     }
 
     /**
@@ -352,7 +366,7 @@ export class Terminal {
         // Initialize components
         this.commandHistory = new CommandHistory();
         this.caretBlinkInterval = CONFIG.CARET_BLINK_INTERVAL;
-        this.commandLine = new CommandLine(this.terminalElement, this.currentDirectory);
+        this.commandLine = new CommandLine(this);
         this.commandRegistry = new CommandRegistry(this, SUPPORTED_COMMANDS);
 
         // Setup commandline key handling
@@ -459,6 +473,7 @@ export class Terminal {
      */
     startCaretBlink() {
         this.stopCaretBlink();
+        this.commandLine.showCaret();
 
         this.caretBlinkIntervalID = setInterval(() => {
             if (this.commandLine) {
@@ -484,41 +499,27 @@ export class Terminal {
      */
     executeCommand() {
         // Get command text without caret
-        const commandText = this.commandLine.getCommandTextWithoutCaret();
+        const commandText = this.commandLine.getFullText();
+
+        // Remove current command line from display
+        this.stopCaretBlink();
+        this.commandLine.hideCaret();
+        this.createNewCommandLine();
 
         // Skip if nothing was typed
-        if (commandText.length === 0) {
-            this.createNewCommandLine();
-            return;
-        }
+        if (commandText.length === 0) return;
 
         // Tokenize the command
         const tokens = commandText.split(' ');
         const command = tokens[0].toLowerCase();
         const args = (tokens.length > 1) ? tokens[1].slice(1) : null;
-        
-        // Remove current command line from display
-        this.commandLine.removeFromDOM();
-        
-        // Add command to display as completed line
-        this.addLineToTerminal(
-            `prompt`, 
-            { 
-                user: this.commandLine.promptUser,
-                directory: this.commandLine.promptDirectory,
-                sign: this.commandLine.promptSign 
-            },
-            commandText
-        )
 
         // Add command to history
         this.commandHistory.addToHistory(commandText);
 
         // Execture the command
         const result = this.commandRegistry.execute(command, args);
-        
-        // Create new command line
-        this.createNewCommandLine();
+
     }
 
     /*  Display Manipulation
@@ -528,10 +529,13 @@ export class Terminal {
      */
     createNewCommandLine() {
         // Create new command line
-        this.commandLine = new CommandLine(this.terminalElement, this.currentDirectory);
+        this.commandLine = new CommandLine(this);
         
         // Add command line to terminal display
         this.terminalDisplay.appendChild(this.commandLine.element);
+
+        // Start the caret blinking
+        this.startCaretBlink();
 
         // Focus the element
         this.commandLine.element.focus();
@@ -544,7 +548,7 @@ export class Terminal {
      * 
      */
     addLineToTerminal(type, promptInfo, content) {
-        const { li } = DOMHelper.createBaseLineElement(type, promptInfo, content);
+        const li = DOMHelper.createOutputLineElement(type, content);
         this.terminalDisplay.appendChild(li);
     }
 

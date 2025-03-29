@@ -13,6 +13,7 @@ body
 
     overflow-x: hidden;
 
+    min-height: 100vh;
     margin: 0;
     padding: 0;
 
@@ -52,8 +53,6 @@ body
     color: #fff;
     border-radius: 10px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, .3);
-
-    mine-height: 100vh;
 }
 
 /*==================================================================================================
@@ -179,6 +178,24 @@ body
     padding: 0;
 }
 
+.terminal__line
+{
+    font-size: 1.5em;
+}
+
+.prompt__user
+{
+    color: rgb(134, 255, 200);
+}
+.prompt__dir
+{
+    color: rgb(168, 148, 255);
+}
+.prompt__sign
+{
+    color: rgb(255, 162, 180);
+}
+
 .line__content
 {
     display: inline-block;
@@ -189,21 +206,25 @@ body
     word-break: break-word; /* Ensures words break properly */
 }
 
-.terminal__line
+/* Add these styles to your CSS */
+.content__caret
 {
-    font-size: 1.5em;
+    position: relative;
+
+    display: inline-block;
+    /*width: .6em;  Adjust based on your font */
+    /*height: 1.2em;  Adjust based on your font */
+    /*margin-left: -.6em;  Pull back to overlay character */
+
+    color: rgb(255, 255, 255);
+    background-color: rgb(0, 0, 0); /* This will be your inverted foreground color */
 }
-.line__user
+
+/* When hidden */
+.content__caret--hidden
 {
-    color: rgb(134, 255, 200);
-}
-.line__dir
-{
-    color: rgb(168, 148, 255);
-}
-.line__sign
-{
-    color: rgb(255, 162, 180);
+    color: transparent;
+    background-color: transparent;
 }
 
 :focus

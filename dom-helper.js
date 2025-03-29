@@ -17,37 +17,17 @@ import { ELEMENT_CLASSES } from "./terminal.js";
 
 /*================================================================================================*/
 export class DOMHelper {
-    static createBaseLineElement(type, promptInfo, content) {
-        const {user, directory, sign} = promptInfo || {};
+    static createOutputLineElement(type, content) {
         const li = document.createElement('li');
         li.className = `${ELEMENT_CLASSES.command_list_item} ${ELEMENT_CLASSES.command_list_item}--${type}`;
-
-        // This is the user section of the commandline ex. `user@system:`
-        const userSpan = document.createElement('span');
-        userSpan.className = 'line__user';
-        userSpan.textContent = user || '';
-
-        // This is the directory of the commandline ex. `~` or `~/Documents/folder/`
-        const dirSpan = document.createElement('span');
-        dirSpan.className = 'line__dir';
-        dirSpan.textContent = directory || '';
-
-        // This is simply the symbol that appears at the end of the prompt ex. `$`
-        const signSpan = document.createElement('span');
-        signSpan.className = 'line__sign';
-        signSpan.textContent = sign || '';
 
         // This is where all typed content will be entered ex. `cd path/to/dir/`
         const contentSpan = document.createElement('span');
         contentSpan.className = 'line__content';
         contentSpan.textContent = content || '';
 
-        if (user) li.appendChild(userSpan);
-        if (directory) li.appendChild(dirSpan)
-        if (sign) li.appendChild(signSpan);
         li.appendChild(contentSpan);
-
-        return { li, contentSpan, userSpan, dirSpan, signSpan };
+        return li;
     }
 }
 
