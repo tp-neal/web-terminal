@@ -46,8 +46,8 @@ body
     display: flex;
     flex-direction: column;
 
-    min-width: 10%;
-    max-width: 65%;
+    min-width: 700px;
+    max-width: 55%;
     margin: 25px auto;
 
     color: #fff;
@@ -183,6 +183,11 @@ body
     font-size: 1.5em;
 }
 
+.line__prompt
+{
+    padding-right: 10px;
+}
+
 .prompt__user
 {
     color: rgb(134, 255, 200);
@@ -199,8 +204,6 @@ body
 .line__content
 {
     display: inline-block;
-
-    padding-left: 10px;
 
     white-space: pre-wrap;
     word-break: break-word; /* Ensures words break properly */

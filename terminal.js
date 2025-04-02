@@ -7,55 +7,96 @@
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: A web-based terminal emulator with command history and UI controls
-*
-    We start by assuming there is a terminal list in the HTML file. We retrieve this dom element,
-    as we will add individual list elements and the command line.
-*
 ==================================================================================================*/
 
-import { CommandRegistry, Command, ClearCommand, EchoCommand } from './commands.js';
-import { DOMHelper, protectedKeyCombination } from './dom-helper.js';
+import { 
+    ArgParser,
+    CommandRegistry, 
+    CdCommand,
+    ClearCommand, 
+    EchoCommand, 
+    LsCommand,
+    TodoCommand,
+    TreeCommand,
+} from './commands.js';
+
+import {
+    Filesystem,
+    FSNode,
+} from './file-system.js';
+
+import { 
+    DOMHelper, 
+    protectedKeyCombination 
+} from './dom-helper.js';
 
 /*==================================================================================================
     Configuration
 ==================================================================================================*/
+const SUPPORTED_COMMANDS = {
+    cd: CdCommand,
+    clear: ClearCommand,
+    echo: EchoCommand,
+    ls: LsCommand,
+    todo: TodoCommand,
+    tree: TreeCommand,
+}
+
 export const ELEMENT_CLASSES = {
     wrapper: `terminal`,
 
-    header_container: `terminal__header`,
+    header: `terminal__header`,
     window_title: `terminal__title`,
-    window_buttons_wrapper: `terminal__controls`,
+    window_buttons_container: `terminal__controls`,
     window_button: `terminal__button`,
     minimize_button: `terminal__button--minimize`,
     maximize_button: `terminal__button--maximize`,
     exit_button: `terminal__button--exit`,
 
-    main_content: `terminal__window`,
+    terminal_window: `terminal__window`,
     command_list: `terminal__list`,
     command_list_item: `terminal__line`,
 };
 
-const CONFIG = {
+export const CONFIG = {
     CARET_SYMBOL: '█',
     CARET_BLINK_INTERVAL: 850,
     USER: `user@system:`,
     DEFAULT_DIRECTORY: `~`,
     SIGN: `$`,
     VERSION_INFO:   'Null-Terminal v0.1.0-alpha \\0\n' +
-                    '© 2025 Fake Inc\n' +
+                    '© 2025 Nullptr Solutions\n' +
                     'Build: 0x00FF-TERM-NULL\n' +
                     '"Where strings end, possibilities begin."\n' +
-                    '------------------------------------------\n' +
-                    'The terminal where commands terminate, but ideas don\'t.\n' +
+                    '---------------------------------------------------------\n' +
+                    'The terminal where strings terminate, but ideas don\'t.\n' +
                     'Running on NullOS kernel 3.14\n' +
+                    'Powered by voidsh interpreter v0.0.0\n' +
                     'Type \'help\' to begin or \'about\' for more information.\n' +
-                    '------------------------------------------\n\n'
-};
+                    '---------------------------------------------------------\n',
 
-const SUPPORTED_COMMANDS = {
-    clear: ClearCommand,
-    echo: EchoCommand,
-}
+    TODO:           '---------------------------------------------------------\n' +
+                    'TODO ITEMS:\n' +
+                    '---------------------------------------------------------\n' +
+                    '1. Control Flow:\n' +
+                    '   - Remove terminal access from commands, and unify they\'re\n' +
+                    '     returns to use a structure to signal how the terminal\n' +
+                    '     should react\n\n' +
+                    '2. UI Improvements:\n' +
+                    '   - Style lines to break by words instead of whole line\n\n' +
+                    '3. Implement the following commands:\n' +
+                    '   - ls     (list directory contents)\n' +
+                    '   - cd     (change directory)\n' +
+                    '   - mkdir  (make directory)\n' +
+                    '   - rm     (remove file/directory)\n' +
+                    '   - touch  (create empty file)\n' +
+                    '   - cp     (copy file/directory)\n' +
+                    '   - mv     (move file/directory)\n' +
+                    '   - pwd    (print working directory)\n' +
+                    '   - echo  ✓ \n' +
+                    '   - clear  ✓ \n' +
+                    '---------------------------------------------------------\n',
+};
 
 /*==================================================================================================
     Class Definitions
@@ -70,23 +111,30 @@ class Caret {
 
 /*================================================================================================*/
 class CommandLine {
-    constructor(terminal) {
-        this.terminal = terminal;
-        this.prompt = { 
-            user: CONFIG.USER, 
-            dir: terminal.currentDirectory, 
-            sign: CONFIG.SIGN 
-        }
+    constructor(terminalInstance, terminalKeydownHandler) {
+        // Get terminal reference
+        this.terminal = terminalInstance;
+
+        // Set up command line properties
         this.caret = new Caret();
         this.leftText = ''; // text left of caret
         this.rightText = ''; // text right of caret
+        this.prompt = { 
+            user: CONFIG.USER, 
+            dir: terminalInstance.currentDirectory, 
+            sign: CONFIG.SIGN 
+        }
         
         // Create DOM element
-        const elements = this.createCommandLineElement();
+        const elements = this.createCommandLineElement(); // create command line and get spans
         this.element = elements.li;
         this.leftTextSpan = elements.leftTextSpan;
         this.rightTextSpan = elements.rightTextSpan;
         this.caretSpan = elements.caretSpan;
+
+        // Set up key capturing for the command line element just created
+        this.handleKeydown = terminalKeydownHandler;
+        this.enableKeyCapture();
     }
 
     /*  DOM Manipulation
@@ -105,17 +153,17 @@ class CommandLine {
         promptSpan.className = 'line__prompt';
         li.appendChild(promptSpan);
 
-        const userSpan = document.createElement('span');
+        const userSpan = document.createElement('span'); // ex. user@system
         userSpan.className = 'prompt__user';
         userSpan.textContent = this.prompt.user;
         promptSpan.appendChild(userSpan);
 
-        const dirSpan = document.createElement('span');
+        const dirSpan = document.createElement('span'); // ex. dir/folder/
         dirSpan.className = 'prompt__dir';
         dirSpan.textContent = this.prompt.dir;
         promptSpan.appendChild(dirSpan);
 
-        const signSpan = document.createElement('span');
+        const signSpan = document.createElement('span'); // ex. $
         signSpan.className = 'prompt__sign';
         signSpan.textContent = this.prompt.sign;
         promptSpan.appendChild(signSpan);
@@ -125,7 +173,7 @@ class CommandLine {
         contentSpan.className = 'line__content';
         li.appendChild(contentSpan);
 
-        const leftTextSpan = document.createElement('span');
+        const leftTextSpan = document.createElement('span'); // (text before caret)
         leftTextSpan.className = 'content__left';
         contentSpan.appendChild(leftTextSpan);
 
@@ -134,19 +182,12 @@ class CommandLine {
         caretSpan.textContent = this.caret.sym;
         contentSpan.appendChild(caretSpan);
 
-        const rightTextSpan = document.createElement('span');
+        const rightTextSpan = document.createElement('span'); // (text after caret)
         rightTextSpan.className = 'content__right';
         contentSpan.appendChild(rightTextSpan);
 
         // Set specific attributes
         li.tabIndex = 0;
-        
-        // Add event listener to capture keystrokes
-        li.addEventListener('keydown', (event) => {
-            if (this.onKeyDown) {
-                this.onKeyDown(event);
-            }
-        });
         
         return { li, leftTextSpan, rightTextSpan, caretSpan};
     }
@@ -219,17 +260,6 @@ class CommandLine {
         this.updateDomText();
     }
 
-    /**
-     * @brief Positions the caret at the end of the command text.
-     */
-    moveCaretToEnd() {
-        this.leftText += this.rightText
-        this.rightText = '';
-        this.caret.pos = this.leftText.length;
-        
-        this.updateDomText();
-    }
-
     /*  Caret Visibility
     ***********************************************************************************************/
     /**
@@ -263,17 +293,49 @@ class CommandLine {
 
     /*  Text Updating
     ***********************************************************************************************/
+    /**
+     * @brief Sets the text to the right of the caret in the command line
+     * @param {string} left Text for the left side to be set to
+     */
     setLeftText(left) {
         this.leftText = left || '';
     }
 
+    /**
+     * @brief Sets the text to the right of the caret in the command line
+     * @param {string} right Text for the right side to be set to
+     */
     setRightText(right) {
         this.rightText = right || '';
     }
 
-    updateDomText(text) {
+    /**
+     * @brief Updates the DOM text content of the command line element
+     */
+    updateDomText() {
         this.leftTextSpan.textContent = this.leftText;
         this.rightTextSpan.textContent = this.rightText;
+    }
+
+    /*  Event Listening
+    ***********************************************************************************************/
+    /**
+     * @brief Defines and adds a key capture event listener to the command line element
+     */
+    enableKeyCapture() {
+        this.keyDownHandlerID = (event) => {
+            if (this.handleKeydown) {
+                this.handleKeydown(event);
+            }
+        };
+        this.element.addEventListener('keydown', this.keyDownHandlerID);
+    }
+
+    /**
+     * @brief Removes the key capture event listener from the command line element
+     */
+    disableKeyCapture() {
+        this.element.removeEventListener('keydown', this.keyDownHandlerID);
     }
 }
 
@@ -285,6 +347,11 @@ class CommandHistory {
         this.iter = 0;
     }
 
+    /**
+     * @brief Navigates the command history based on the direction specified
+     * @param {string} direction Direction to navigate ('previous' or 'next')
+     * @param {HTMLOListElement} commandLine Command line element to update
+     */
     navigateCommandHistory(direction, commandLine) {
         if (!commandLine) console.error(`Command history naviagation failed: commandLine instance is null`);
         let retrievedCommand = '';
@@ -301,6 +368,7 @@ class CommandHistory {
         // Update the command line with the retrieved command
         commandLine.setLeftText(retrievedCommand);
         commandLine.setRightText('');
+        commandLine.caret.pos = retrievedCommand.length;
         commandLine.updateDomText(); 
     }
 
@@ -346,7 +414,7 @@ class CommandHistory {
 /*================================================================================================*/
 export class Terminal { 
     constructor() {
-        // Find terminal wrapper
+        // Find terminal wrapper element
         this.terminalElement = document.querySelector(`.` + ELEMENT_CLASSES.wrapper);
         if (!this.terminalElement) {
             console.error(`Terminal wrapper not found in the DOM`);
@@ -360,32 +428,45 @@ export class Terminal {
             return;
         }
 
-        // Initialize working directory
+        // Initialize configuration variables
         this.currentDirectory = CONFIG.DEFAULT_DIRECTORY;
-
-        // Initialize components
-        this.commandHistory = new CommandHistory();
         this.caretBlinkInterval = CONFIG.CARET_BLINK_INTERVAL;
-        this.commandLine = new CommandLine(this);
-        this.commandRegistry = new CommandRegistry(this, SUPPORTED_COMMANDS);
-
-        // Setup commandline key handling
-        this.handleKeydown = this.handleKeydown.bind(this);
-        this.commandLine.onKeyDown = this.handleKeydown;
 
         // Add version info and commandline to DOM
         this.printVersionInfo();
-        this.terminalDisplay.appendChild(this.commandLine.element);
+
+        // Bind key handling function so the command line can access it on keydown
+        this.handleKeydown = this.handleKeydown.bind(this);
+
+        // Initialize components
+        this.filesystem = new Filesystem(this.currentDirectory);
+        this.commandHistory = new CommandHistory();
+        this.createNewCommandLine();
+        this.commandRegistry = new CommandRegistry(this, this.filesystem, SUPPORTED_COMMANDS);
+
+        // // TESTING
+        // let printArgs = (tokens) => {
+        //     console.log('Tokens:');
+        //     tokens.forEach((token) => {
+        //         console.log(token);
+        //     });
+        // }
+        
+        // let t1 = ArgParser.parse('cd /users/Documents');
+        // console.log('Command: cd /users/Documents');
+        // printArgs(t1);
     }
 
     /*  Initialization
     ***********************************************************************************************/
+    /**
+     * @brief Initializes the terminal
+     * @returns true on success
+     */
     init() {
 
-        // Setup header buttons
+        // Set up event handling/intervals
         this.setupHeaderButtons();
-        
-        // Setup caret blinking
         this.startCaretBlink();
         
         // Return success
@@ -396,13 +477,13 @@ export class Terminal {
     ***********************************************************************************************/
     /**
      * @brief Initializes keystroke events
-     * @param {*} event 
+     * @param {KeyboardEvent} event The keydown event
      */
     handleKeydown(event) {
         this.startCaretBlink();
         switch (event.key) {
 
-            // Carret Shifting
+            // Carret Lateral Movement
             case 'ArrowRight':
                 this.commandLine.moveCaret('right');
                 break;
@@ -410,7 +491,7 @@ export class Terminal {
                 this.commandLine.moveCaret('left');
                 break;
             
-            // Command History
+            // Command History Navigation
             case 'ArrowUp':
                 this.commandHistory.navigateCommandHistory('previous', this.commandLine);
                 break;
@@ -418,7 +499,7 @@ export class Terminal {
                 this.commandHistory.navigateCommandHistory('next', this.commandLine);
                 break;
 
-            // Command Requesting
+            // Command Execution
             case 'Enter':
                 this.executeCommand();
                 break;
@@ -427,15 +508,6 @@ export class Terminal {
                 break;
             case 'Backspace':
                 this.commandLine.removePreviousCharacter();
-                break;
-
-            // Explicitly ignore special keys
-            case 'Shift':
-            case 'Control':
-            case 'Alt':
-            case 'CapsLock':
-            case 'Tab':
-            case 'Escape':
                 break;
 
             // Default: append key to content if valid character
@@ -501,25 +573,55 @@ export class Terminal {
         // Get command text without caret
         const commandText = this.commandLine.getFullText();
 
-        // Remove current command line from display
+        // Remove event handling and caret from the current command line
+        this.commandLine.disableKeyCapture();
         this.stopCaretBlink();
         this.commandLine.hideCaret();
-        this.createNewCommandLine();
 
         // Skip if nothing was typed
-        if (commandText.length === 0) return;
+        if (commandText.length > 0) {
 
-        // Tokenize the command
-        const tokens = commandText.split(' ');
-        const command = tokens[0].toLowerCase();
-        const args = (tokens.length > 1) ? tokens[1].slice(1) : null;
+            // Parse the arguments for the command
+            let args = ArgParser.parse(commandText);
+            const command = args[0];
 
-        // Add command to history
-        this.commandHistory.addToHistory(commandText);
+            // Prepare the remaining arguments
+            args = args.slice(1);
+            if (args.length === 0) {
+                args = null;
+            }
 
-        // Execture the command
-        const result = this.commandRegistry.execute(command, args);
+            // Execute the command if command is registered (path everything after command as args)
+            const { type, content } = this.commandRegistry.execute(command, args);
 
+            // Handle output based on type
+            switch(type) {
+                
+                case 'error':
+                    this.addOutputLineToTerminal('error', `${command}: ${content}`);
+                    break;
+                
+                case 'output':
+                    if (content) // Only print a line if there is content, or specified to print blank
+                        this.addOutputLineToTerminal('output', content);
+                    break;
+                
+                case 'clear':
+                    this.clearDisplay();
+                    break;
+
+                case 'navigation':
+                    this.currentDirectory = this.filesystem.cwd.getFilePath();
+                    this.currentDirectory = this.filesystem.abbreviateHomeDir(this.currentDirectory);
+                    break;
+
+                default:
+                    console.error(`Unknown command return type of ${type}`);
+            }
+        }
+
+        // Add back command line
+        this.createNewCommandLine(); 
     }
 
     /*  Display Manipulation
@@ -529,7 +631,7 @@ export class Terminal {
      */
     createNewCommandLine() {
         // Create new command line
-        this.commandLine = new CommandLine(this);
+        this.commandLine = new CommandLine(this, this.handleKeydown); // pass terminal and key handler
         
         // Add command line to terminal display
         this.terminalDisplay.appendChild(this.commandLine.element);
@@ -539,23 +641,27 @@ export class Terminal {
 
         // Focus the element
         this.commandLine.element.focus();
-        
-        // Set up keydown handler
-        this.commandLine.onKeyDown = this.handleKeydown;
     }
 
     /**
-     * 
+     * @brief Adds an output line to the terminal display
      */
-    addLineToTerminal(type, promptInfo, content) {
+    addOutputLineToTerminal(type, content) {
         const li = DOMHelper.createOutputLineElement(type, content);
         this.terminalDisplay.appendChild(li);
+    }
+
+    /**
+     * @brief Clears the terminal by removing html list items from its display list
+     */
+    clearDisplay() {
+        this.terminalDisplay.innerHTML ='';
     }
 
     /**
      * 
      */
     printVersionInfo() {
-        this.addLineToTerminal('output', null, CONFIG.VERSION_INFO);
+        this.addOutputLineToTerminal('output', CONFIG.VERSION_INFO);
     }
 }
