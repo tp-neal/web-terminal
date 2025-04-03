@@ -1,6 +1,5 @@
-
 /*==================================================================================================
-* @proj Web-Based Terminal
+* @project Web-Based Terminal
 ====================================================================================================
 * @file: file-system.js
 * @date: 03/23/2025
@@ -9,6 +8,9 @@
 * @brief: A web-based terminal emulator with command history and UI controls
 ==================================================================================================*/
 
+/**
+ * @brief Map of supported file types and their descriptions
+ */
 const SUPPORTED_TYPES = {
     dir: 'Directory',
     txt: 'Text File',
@@ -17,9 +19,17 @@ const SUPPORTED_TYPES = {
 }
 
 /*==================================================================================================
-    Filesystem Class
+    Class Definitions
 ==================================================================================================*/
+/**
+ * @class Filesystem
+ * @brief Manages the virtual file system structure and operations
+ */
 export class Filesystem {
+    /**
+     * @brief Constructor - initializes the filesystem with test data
+     * @param {string} initialDirectory - Optional starting directory (unused in current implementation)
+     */
     constructor(initialDirectory) {
         const {root, home, cwd} = this.createTestFilesystem();
         this.root = root;
@@ -29,8 +39,14 @@ export class Filesystem {
 
     /*  General
     ***********************************************************************************************/
+    /**
+     * @brief Validates file or directory name against system constraints
+     * @param {string} name - Name to validate
+     * @return {boolean} True if valid, false otherwise
+     */
     isValidName(name) {
         const errors = [];
+        
         
         if (!name || name.length === 0) errors.push("empty");
         if (name.includes('/')) errors.push("contains slash");
@@ -45,6 +61,11 @@ export class Filesystem {
         return true;
     }
 
+    /**
+     * @brief Converts home directory path to tilde notation
+     * @param {string} path - Full path to convert
+     * @return {string} Abbreviated path with ~ for home directory
+     */
     abbreviateHomeDir(path) {
         const homeNameLength = this.home.getFilePath().length;
         if (path.substring(0, homeNameLength) == this.home.getFilePath()) {
@@ -54,33 +75,68 @@ export class Filesystem {
     }
 
     /**
-     * @brief Navigates to an absolute or relative path.
-     * @param {string} path Path to directory to navigate to.
-     * @returns 
+     * @brief Tokenizes a filepath, and returns an ordered list of folders in path.
+     * @param {string} path Filepath to be tokenized.
+     * @returns {string[]} Ordered array of folder names to get to file path.
+     */
+    tokenizePath(path) {
+        if (!path) {
+            console.error('Cannot tokenize null path');
+            return null;
+        }
+
+        const tokens = path.split('/').filter(item => item !== '');
+        for (const token of tokens) {
+            if (!this.isValidName(token)) {
+                return null;
+            }
+        }
+
+        return tokens
+    }
+
+    /*  Manipulation
+    ***********************************************************************************************/
+    deleteNode(node, { recursive }) {
+        if (!node) return;
+
+        // If recuresive deletion, check if node is directory and has children
+        if (recursive) {
+            if (node.isDirectory && node.children) {
+                for (const child of node.children)
+                    // Delete all children of node
+                    this.deleteNode(child, { recursive: true});
+            }
+        }
+
+        if (node.parent)
+            node.parent.removeChild(node.getFullName());
+    }
+
+    /*  Navigation
+    ***********************************************************************************************/
+    /**
+     * @brief Navigates to an absolute or relative path
+     * @param {string} path - Path to directory to navigate to
+     * @return {Object} Status object with success flag and info message
      */
     navigateTo(path) {
-        const status = {
-          success: false,
-          info: ''
-        };
         
         // Root directory navigation
         if (path === '/') {
             this.cwd = this.root;
-            status.success = true;
-            return status;
+            return { success: true }
         }
 
         // Home directory navigation
         if (path === '') {
             this.cwd = (this.home) ? this.home : this.root;
-            status.success = true;
-            return status;
+            return { success: true }
         }
         
         // Tokenize filepath
         const isAbsolute = path[0] === '/';
-        const folders = path.split('/').filter(item => item !== '' && this.isValidName(item));
+        const folders = path.split('/').filter(item => item !== '');
         let cursor = isAbsolute ? this.root : this.cwd;
         
         // Iterate through directories
@@ -92,8 +148,10 @@ export class Filesystem {
                     cursor = cursor.parent;
             } else {
                 if (!cursor.hasChild(folder, 'dir')) {
-                    status.info = 'Path does not exist';
-                    return status;
+                    return { 
+                        success: false,
+                        info: 'Path does not exist'
+                     }
                 }
                 cursor = cursor.getChild(folder);
             }
@@ -102,12 +160,15 @@ export class Filesystem {
         
         // Update current working directory
         this.cwd = cursor;
-        status.success = true;
-        return status;
+        return { success: true }
     }
 
     /*  Printing
     ***********************************************************************************************/
+    /**
+     * @brief Generates a string representation of the entire filesystem
+     * @return {string} Formatted string representation of filesystem
+     */
     stringifyFilesystem() {
         let filesystemString = ''
         filesystemString += 'Filesystem:';
@@ -118,11 +179,18 @@ export class Filesystem {
         return filesystemString;
     }
 
+    /**
+     * @brief Recursively builds string representation of a filesystem subtree
+     * @param {FSNode} root - Root node of the subtree
+     * @param {number} layer - Current depth level for indentation
+     * @param {string} string - Accumulated string representation
+     * @return {string} Updated string representation with added subtree
+     */
     stringifySubsystem(root, layer, string) {
         if (!root) return string;
         
         // Create indentation based on the current layer
-        const spaces = layer * 3; // Assuming 2 spaces per level
+        const spaces = layer * 3; // Assuming 3 spaces per level
         let indent = '';
         for (let i = 0; i < spaces; i++) {
             indent += ' ';
@@ -142,6 +210,10 @@ export class Filesystem {
 
     /*  Testing
     ***********************************************************************************************/
+    /**
+     * @brief Creates a test filesystem with predefined structure
+     * @return {Object} Object containing root, home, and current working directory nodes
+     */
     createTestFilesystem() {
         // Root level directories
         let root = new FSNode('/', 'dir');
@@ -239,105 +311,156 @@ export class Filesystem {
         return { 
             root: root, 
             home: userDir, 
-            cwd: userDir };
+            cwd: userDir 
+        };
     }
 }
 
-/*==================================================================================================
-    File/Folder Class
-==================================================================================================*/
+/*================================================================================================*/
+/**
+ * @class FSNode
+ * @brief Represents a node in the filesystem (either a file or directory)
+ */
 export class FSNode {
+    /**
+     * @brief Constructor - creates a new file system node
+     * @param {string} name - Name of the file or directory
+     * @param {string} type - Type of node ('dir' or file extension)
+     */
     constructor(name, type) {
         this.name = name;
         this.type = type;
-        this.isDirectory = (type === 'dir') ? true: false;
-        this.isHidden = false;
+        this.isDirectory = (type === 'dir');
+        this.isHidden = name.startsWith('.'); // Updated isHidden logic based on name
 
         this.parent = null;
         this.children = (!this.isDirectory) ? null : new Map();
 
         this.metadata = {
-            created: Date.now(),
-            modified: Date.now(),
+            created: new Date(), // Use Date object
+            modified: new Date(), // Use Date object
             size: 0
         };
         this.content = (this.isDirectory) ? null : '';
     }
 
+    /**
+     * @brief Gets the full name of the node including extension for files.
+     * Used as the key in the parent's children map.
+     * @return {string} Full name (e.g., "file.txt" or "directory_name").
+     */
     getFullName() {
         return (this.isDirectory) ? this.name : this.name + '.' + this.type;
     }
 
+    /**
+     * @brief Gets the full path of this node from root
+     * @return {string} Full path starting from root
+     */
     getFilePath() {
         let node = this;
         let path = '';
         while (node) {
-            path = node.name + path;
-            // If the node has a parent and its not the root add a '/'
-            if (node.parent && node.parent.name !== '/')
-                path = '/' + path;
+            path = node.name + ((path && node.name !== '/') ? '/' : '') + path; // build path correctly
+
+             // Stop at root - check parent, not name
+            if (node.parent === null && node.name === '/') break; // Reached root
             node = node.parent;
         }
+         // Ensure leading slash if it wasn't the root itself
+         if (path !== '/' && !path.startsWith('/')) {
+             path = '/' + path;
+         }
         return path;
     }
 
-    hasChild(name, type) {
-        // Check if child exists
-        const child = this.children.get(name);
-        if (child === undefined)
-            return false;
+    /**
+     * @brief Checks if directory has a child with specified full name and optional type.
+     * @param {string} fullName - Full name of child (name.ext for files, name for dirs).
+     * @param {string} [type] - Optional type of child ('dir' or file extension).
+     * @return {boolean} True if child exists and matches type (if specified).
+     */
+    hasChild(fullName, type) {
+        if (!this.isDirectory) return false; // Files have no children
 
-        // If type specified, check if child's type matches
+        // Check if child exists using the full name as the key
+        const child = this.children.get(fullName);
+        if (child === undefined) {
+            return false;
+        }
+
+        // If type specified, check if the found child's type matches
         if (type) {
-            if (!(type in SUPPORTED_TYPES)) 
+            if (child.type !== type) {
                 return false;
-            if (child.type !== type)
-                return false;
+            }
         }
 
         return true;
     }
 
-    getChild(childName) {
-        if (!this.hasChild(childName)) {
-            console.error(`Folder '${this.name}' has no child named '${childName}'`)
-            return false;
-        }
+    /**
+     * @brief Gets a child node by its full name, optionally checking type.
+     * @param {string} fullName - Full name of child (name.ext for files, name for dirs).
+     * @param {string} [type] - Optional required type ('dir' or file extension).
+     * @return {FSNode|null} Child node if found (and type matches, if specified), otherwise null.
+     */
+    getChild(fullName, type) {
+        if (!this.isDirectory) return null; // Files have no children
 
-        return this.children.get(childName);
-    }
-
-    addChild(child) {
-        if (this.hasChild(child.name)) {
-            console.error(`Folder '${this.name}' already has child '${child.name}'`)
+        // Retrieve using the full name key
+        const child = this.children.get(fullName);
+        if (!child) {
             return null;
         }
+
+         // Optional type check
+         if (type && child.type !== type) {
+            return null;
+         }
+
+        return child;
+    }
+
+    /**
+     * @brief Adds a child node to this directory. Uses child's full name as map key.
+     * @param {FSNode} child - Node to add as child.
+     * @return {boolean} True if successful, false if not a directory or child already exists.
+     */
+    addChild(child) {
+        if (!this.isDirectory) {
+             console.error(`Cannot add child to non-directory: ${this.getFullName()}`);
+            return false;
+        }
+        const childFullName = child.getFullName();
+        if (this.hasChild(childFullName)) {
+            console.error(`Folder '${this.getFullName()}' already has child '${childFullName}'`);
+            return false;
+        }
         child.parent = this;
-        this.children.set(child.name, child);
-        
+        this.children.set(childFullName, child); // Use full name as key
+
         return true;
     }
 
-    removeChild(childName) {
-        if (!this.hasChild(childName)) {
-            console.error(`Folder '${this.name}' has no child named '${childName}'`)
+    /**
+     * @brief Removes a child node by its full name.
+     * @param {string} fullName - Full name of child to remove (name.ext for files, name for dirs).
+     * @return {boolean} True if successfully removed, false if not found or not a directory.
+     */
+    removeChild(fullName) {
+        if (!this.isDirectory) {
+             console.error(`Cannot remove child from non-directory: ${this.getFullName()}`);
+             return false;
+        }
+        // Use hasChild with the full name key to check existence before deleting
+        if (!this.hasChild(fullName)) {
             return false;
         }
 
-        this.children.delete(childName);
-        return true;
-    } 
+        // Delete using the full name key
+        const deleted = this.children.delete(fullName);
 
-    hide() {
-        if (this.name[0] !== '.')
-            this.name = '.' + this.name;
-        this.isHidden = true;
-    }
-
-    unhide() {
-        if (this.name[0] === '.') {
-            this.name = this.name.substring(1);
-        }
-        this.isHidden = false;
+        return deleted;
     }
 }

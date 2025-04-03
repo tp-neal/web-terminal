@@ -1,6 +1,5 @@
-
 /*==================================================================================================
-* @proj Web-Based Terminal
+* @project Web-Based Terminal
 ====================================================================================================
 * @file: script.js
 * @date: 03/23/2025
@@ -16,6 +15,9 @@ import {
     ClearCommand, 
     EchoCommand, 
     LsCommand,
+    MkdirCommand,
+    PwdCommand,
+    RmCommand,
     TodoCommand,
     TreeCommand,
 } from './commands.js';
@@ -33,15 +35,24 @@ import {
 /*==================================================================================================
     Configuration
 ==================================================================================================*/
+/**
+ * @brief Map of command names to their corresponding command classes
+ */
 const SUPPORTED_COMMANDS = {
     cd: CdCommand,
     clear: ClearCommand,
     echo: EchoCommand,
     ls: LsCommand,
+    mkdir: MkdirCommand,
+    pwd: PwdCommand,
+    rm: RmCommand,
     todo: TodoCommand,
     tree: TreeCommand,
 }
 
+/**
+ * @brief CSS class names used throughout the terminal application
+ */
 export const ELEMENT_CLASSES = {
     wrapper: `terminal`,
 
@@ -58,6 +69,9 @@ export const ELEMENT_CLASSES = {
     command_list_item: `terminal__line`,
 };
 
+/**
+ * @brief Global configuration settings for the terminal
+ */
 export const CONFIG = {
     CARET_SYMBOL: '█',
     CARET_BLINK_INTERVAL: 850,
@@ -75,33 +89,42 @@ export const CONFIG = {
                     'Type \'help\' to begin or \'about\' for more information.\n' +
                     '---------------------------------------------------------\n',
 
-    TODO:           '---------------------------------------------------------\n' +
+    TWODOO:         '---------------------------------------------------------\n' +
                     'TODO ITEMS:\n' +
                     '---------------------------------------------------------\n' +
-                    '1. Control Flow:\n' +
-                    '   - Remove terminal access from commands, and unify they\'re\n' +
-                    '     returns to use a structure to signal how the terminal\n' +
-                    '     should react\n\n' +
-                    '2. UI Improvements:\n' +
-                    '   - Style lines to break by words instead of whole line\n\n' +
-                    '3. Implement the following commands:\n' +
-                    '   - ls     (list directory contents)\n' +
-                    '   - cd     (change directory)\n' +
-                    '   - mkdir  (make directory)\n' +
-                    '   - rm     (remove file/directory)\n' +
-                    '   - touch  (create empty file)\n' +
-                    '   - cp     (copy file/directory)\n' +
-                    '   - mv     (move file/directory)\n' +
-                    '   - pwd    (print working directory)\n' +
-                    '   - echo  ✓ \n' +
-                    '   - clear  ✓ \n' +
+                    '1.  Fix command history feature\n' +
+                    '2.  Add tab auto-completion for navigation cmds.\n' +
+                    '3.  Style lines to break by words instead of whole lines.\n' +
+                    '4.  Add specific folder/file highlighting for cmds like ls.\n' +
+                    '5.  Implement switches for designated cmds.\n' +
+                    '6.  Implement the following cmds:\n' +
+                    '    - cat      (concatenate and display file contents)\n' +
+                    '    ✓ cd       (change directory)\n' +
+                    '    ✓ clear    (clear terminal screen)\n' +
+                    '    - cp       (copy file/directory)\n' +
+                    '    ✓ echo     (display a line of text)\n' +
+                    '    - find     (search for files in a directory hierarchy)\n' +
+                    '    - grep     (search text using patterns)\n' +
+                    '    - ls       (list directory contents)\n' +
+                    '    ✓ mkdir    (make directory)\n' +
+                    '    - mv       (move file/directory)\n' +
+                    '    - pwd      (print working directory)\n' +
+                    '    - rm       (remove file/directory)\n' +
+                    '    - touch    (create empty file)\n' +
                     '---------------------------------------------------------\n',
 };
 
 /*==================================================================================================
     Class Definitions
 ==================================================================================================*/
+/**
+ * @class Caret
+ * @brief Represents the text cursor for the terminal interface
+ */
 class Caret {
+    /**
+     * @brief Constructor - initializes a caret with default properties
+     */
     constructor() {
         this.sym = CONFIG.CARET_SYMBOL;
         this.pos = 0;
@@ -110,7 +133,16 @@ class Caret {
 }
 
 /*================================================================================================*/
+/**
+ * @class CommandLine
+ * @brief Handles command input including text manipulation and caret position
+ */
 class CommandLine {
+    /**
+     * @brief Constructor - creates a new command line instance
+     * @param {Terminal} terminalInstance The terminal instance this command line belongs to
+     * @param {Function} terminalKeydownHandler Function to handle keydown events
+     */
     constructor(terminalInstance, terminalKeydownHandler) {
         // Get terminal reference
         this.terminal = terminalInstance;
@@ -141,7 +173,7 @@ class CommandLine {
     ***********************************************************************************************/
     /**
      * @brief Creates a new command line DOM element
-     * @returns DOM element for the command line
+     * @return {Object} Object containing the created DOM elements
      */
     createCommandLineElement() {
         // Create html list element
@@ -204,8 +236,8 @@ class CommandLine {
     /*  Text Modification
     ***********************************************************************************************/
     /**
-     * @brief Inserts a character into the current command line before the caret.
-     * @param {char} key Character to insert
+     * @brief Inserts a character into the current command line before the caret
+     * @param {string} key Character to insert
      */
     insertCharacter(key) {
         this.leftText += key;
@@ -215,7 +247,7 @@ class CommandLine {
     }
 
     /**
-     * @brief Removes the character from the current command line before the caret.
+     * @brief Removes the character from the current command line before the caret
      */
     removePreviousCharacter() {
         if (this.caret.pos === 0) return; // skip if nothing to remove
@@ -226,7 +258,7 @@ class CommandLine {
     }
 
     /**
-     * @brief Removes the character from the current command line after the caret.
+     * @brief Removes the character from the current command line after the caret
      */
     removeNextCharacter() {
         if (this.caret.pos === 0) return; // skip if nothing to remove
@@ -238,9 +270,9 @@ class CommandLine {
     /*  Caret Movement
     ***********************************************************************************************/
     /**
-     * @brief Updates the position of the caret within the command text, moving it left or right.
+     * @brief Updates the position of the caret within the command text, moving it left or right
      * @param {string} direction Direction of caret movement ("left" or "right")
-     * @returns Early return if caret is at left or right border
+     * @return {boolean} Early return if caret is at left or right border
      */
     moveCaret(direction) {
         if (direction === 'left') {
@@ -263,14 +295,14 @@ class CommandLine {
     /*  Caret Visibility
     ***********************************************************************************************/
     /**
-     * @brief Toggles caret visibility. Used with setInterval() to periodically blink the caret.
+     * @brief Toggles caret visibility. Used with setInterval() to periodically blink the caret
      */
     toggleCaret() {
         this.caret.visible ? this.hideCaret() : this.showCaret();
     }
 
     /**
-     * @brief Used to hide the caret in the displayed command text.
+     * @brief Hides the caret in the displayed command text
      */
     hideCaret() {
         this.caretSpan.classList.add('content__caret--hidden');
@@ -278,7 +310,7 @@ class CommandLine {
     }
 
     /**
-     * @brief Used to show the caret in the displayed command text.
+     * @brief Shows the caret in the displayed command text
      */
     showCaret() {
         this.caretSpan.classList.remove('content__caret--hidden');
@@ -287,6 +319,10 @@ class CommandLine {
 
     /*  Text Return
     ***********************************************************************************************/
+    /**
+     * @brief Gets the full text content of the command line
+     * @return {string} Combined text from both sides of the caret
+     */
     getFullText() {
         return this.leftText + this.rightText;
     }
@@ -294,7 +330,7 @@ class CommandLine {
     /*  Text Updating
     ***********************************************************************************************/
     /**
-     * @brief Sets the text to the right of the caret in the command line
+     * @brief Sets the text to the left of the caret in the command line
      * @param {string} left Text for the left side to be set to
      */
     setLeftText(left) {
@@ -340,7 +376,15 @@ class CommandLine {
 }
 
 /*================================================================================================*/
+/**
+ * @class CommandHistory
+ * @brief Manages the command history for up/down arrow navigation
+ * @todo Fix command history navigation
+ */
 class CommandHistory {
+    /**
+     * @brief Constructor - initializes an empty command history
+     */
     constructor() {
         this.commands = [];
         this.commandBuffer = ``;
@@ -350,7 +394,7 @@ class CommandHistory {
     /**
      * @brief Navigates the command history based on the direction specified
      * @param {string} direction Direction to navigate ('previous' or 'next')
-     * @param {HTMLOListElement} commandLine Command line element to update
+     * @param {CommandLine} commandLine Command line element to update
      */
     navigateCommandHistory(direction, commandLine) {
         if (!commandLine) console.error(`Command history naviagation failed: commandLine instance is null`);
@@ -383,7 +427,7 @@ class CommandHistory {
 
     /**
      * @brief Gets the previous command from history
-     * @returns Previous command or empty string if at start
+     * @return {string} Previous command or empty string if at start
      */
     getPrevious() {
         if (this.iter > 0) this.iter--;
@@ -392,7 +436,7 @@ class CommandHistory {
 
     /**
      * @brief Gets the next command from history
-     * @returns Next command or command buffer if at end
+     * @return {string} Next command or command buffer if at end
      */
     getNext() {
         if (this.iter < this.commands.length) this.iter++;
@@ -404,7 +448,7 @@ class CommandHistory {
 
     /**
      * @brief Gets the number of commands in history
-     * @returns Size of command history
+     * @return {number} Size of command history
      */
     size() {
         return this.commands.length;
@@ -412,7 +456,14 @@ class CommandHistory {
 }
 
 /*================================================================================================*/
+/**
+ * @class Terminal
+ * @brief Main terminal class that manages the overall terminal functionality
+ */
 export class Terminal { 
+    /**
+     * @brief Constructor - initializes the terminal and its components
+     */
     constructor() {
         // Find terminal wrapper element
         this.terminalElement = document.querySelector(`.` + ELEMENT_CLASSES.wrapper);
@@ -427,6 +478,13 @@ export class Terminal {
             console.error('Terminal display list not found in the DOM');
             return;
         }
+
+        // const args = ["cp", "-l", "--carvan", "a", "-b", "afile1", "file2", "file3", "dir/to/copyto"];
+        // const { switches, remaining } = ArgParser.argumentSplitter(args);
+        // console.log("Switches:");
+        // switches.forEach((swch) => console.log(swch));
+        // console.log("Remaining:");
+        // remaining.forEach((param) => console.log(param));
 
         // Initialize configuration variables
         this.currentDirectory = CONFIG.DEFAULT_DIRECTORY;
@@ -443,25 +501,13 @@ export class Terminal {
         this.commandHistory = new CommandHistory();
         this.createNewCommandLine();
         this.commandRegistry = new CommandRegistry(this, this.filesystem, SUPPORTED_COMMANDS);
-
-        // // TESTING
-        // let printArgs = (tokens) => {
-        //     console.log('Tokens:');
-        //     tokens.forEach((token) => {
-        //         console.log(token);
-        //     });
-        // }
-        
-        // let t1 = ArgParser.parse('cd /users/Documents');
-        // console.log('Command: cd /users/Documents');
-        // printArgs(t1);
     }
 
     /*  Initialization
     ***********************************************************************************************/
     /**
      * @brief Initializes the terminal
-     * @returns true on success
+     * @return {boolean} True on success
      */
     init() {
 
@@ -476,7 +522,7 @@ export class Terminal {
     /*  Event Handling
     ***********************************************************************************************/
     /**
-     * @brief Initializes keystroke events
+     * @brief Handles keydown events for the terminal
      * @param {KeyboardEvent} event The keydown event
      */
     handleKeydown(event) {
@@ -523,7 +569,7 @@ export class Terminal {
     }
     
     /**
-     * @brief Setup header button event listeners
+     * @brief Sets up header button event listeners
      */
     setupHeaderButtons() {
         const buttons = [
@@ -541,7 +587,7 @@ export class Terminal {
     }
 
     /**
-     * @brief Resets and or starts the caret blinking process
+     * @brief Resets and starts the caret blinking process
      */
     startCaretBlink() {
         this.stopCaretBlink();
@@ -567,7 +613,7 @@ export class Terminal {
     /*  Command Management
     ***********************************************************************************************/
     /**
-     * @brief Executes the current command
+     * @brief Executes the current command entered in the command line
      */
     executeCommand() {
         // Get command text without caret
@@ -587,18 +633,15 @@ export class Terminal {
 
             // Prepare the remaining arguments
             args = args.slice(1);
-            if (args.length === 0) {
-                args = null;
-            }
 
             // Execute the command if command is registered (path everything after command as args)
-            const { type, content } = this.commandRegistry.execute(command, args);
+            const { type, content } = this.commandRegistry.executeCommand(command, args);
 
             // Handle output based on type
             switch(type) {
                 
                 case 'error':
-                    this.addOutputLineToTerminal('error', `${command}: ${content}`);
+                    this.addOutputLineToTerminal('error', content);
                     break;
                 
                 case 'output':
@@ -615,6 +658,9 @@ export class Terminal {
                     this.currentDirectory = this.filesystem.abbreviateHomeDir(this.currentDirectory);
                     break;
 
+                case 'ignore':
+                    break;
+
                 default:
                     console.error(`Unknown command return type of ${type}`);
             }
@@ -627,7 +673,7 @@ export class Terminal {
     /*  Display Manipulation
     ***********************************************************************************************/
     /**
-     * @brief Creates a new command line
+     * @brief Creates a new command line and appends it to the terminal display
      */
     createNewCommandLine() {
         // Create new command line
@@ -645,6 +691,8 @@ export class Terminal {
 
     /**
      * @brief Adds an output line to the terminal display
+     * @param {string} type Type of output ('error', 'output', etc.)
+     * @param {string} content Content to display
      */
     addOutputLineToTerminal(type, content) {
         const li = DOMHelper.createOutputLineElement(type, content);
@@ -652,14 +700,14 @@ export class Terminal {
     }
 
     /**
-     * @brief Clears the terminal by removing html list items from its display list
+     * @brief Clears the terminal by removing all content from the display
      */
     clearDisplay() {
         this.terminalDisplay.innerHTML ='';
     }
 
     /**
-     * 
+     * @brief Prints version information to the terminal
      */
     printVersionInfo() {
         this.addOutputLineToTerminal('output', CONFIG.VERSION_INFO);
