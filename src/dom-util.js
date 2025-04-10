@@ -1,28 +1,56 @@
-
 /*==================================================================================================
 * @proj Web-Based Terminal
 ====================================================================================================
-* @file: dom-helper.js
+* @file: dom-util.js
 * @date: 03/23/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
-* @brief: A web-based terminal emulator with command history and UI controls
+* @brief: Contains implementation of helper functions/classes for DOM HTML generation and key 
+          combination protection.
 ==================================================================================================*/
 
-import { ELEMENT_CLASSES } from "./terminal.js";
+import { ELEMENT_CLASSES } from "./config.js";
 
-/*================================================================================================*/
+/*  Class Definition
+***************************************************************************************************/
 export class DOMHelper {
-    static createOutputLineElement(type, content) {
-        const li = document.createElement('li');
-        li.className = `${ELEMENT_CLASSES.command_list_item} ${ELEMENT_CLASSES.command_list_item}--${type}`;
+    static createOutputLineElement(line) {
 
-        // This is where all typed content will be entered ex. `cd path/to/dir/`
+        // Create list element to hold new entry
+        // Lines are of type output or error for easy retrieval. The list class does not affect styling.
+        const li = document.createElement('li');
+        li.className = `${ELEMENT_CLASSES.command_list_item}`;
+
+        // Make a content span to hold all the lines
         const contentSpan = document.createElement('span');
         contentSpan.className = 'line__content';
-        contentSpan.textContent = content || '';
-
         li.appendChild(contentSpan);
+
+        // This is where all typed content will be entered.
+        // We will put seperate spans inside to control style.
+        for (const lineSpan of line.spans) {
+            // Prepare new span for formatting
+            const span = document.createElement('span');
+
+            if (lineSpan.type === 'general') 
+                span.className = ELEMENT_CLASSES.general_text;
+
+            else if (lineSpan.type === 'error') 
+                span.className = ELEMENT_CLASSES.error_text;
+
+            else if (lineSpan.type === 'hint')
+                span.className = ELEMENT_CLASSES.hint_text;
+            
+            else if (lineSpan.type === 'directory')
+                span.className = ELEMENT_CLASSES.directory_text;
+
+            else if (lineSpan.type === 'file')
+                span.className = ELEMENT_CLASSES.file_text;
+        
+            span.textContent = lineSpan.content;
+            contentSpan.appendChild(span);
+        }
+
         return li;
     }
 }

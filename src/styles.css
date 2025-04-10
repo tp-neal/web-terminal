@@ -46,8 +46,7 @@ body
     display: flex;
     flex-direction: column;
 
-    min-width: 700px;
-    max-width: 55%;
+    width: clamp(700px, 65vw, 1400px);
     margin: 25px auto;
 
     color: #fff;
@@ -184,19 +183,12 @@ body
     list-style-type: none;
 }
 
-.line__user .line__sign
-{
-    display: inline-block;
-
-    margin: 0;
-    padding: 0;
-}
-
 .terminal__line
 {
     font-size: 1.5em;
 }
 
+/* Prompt Section */
 .line__prompt
 {
     padding-right: 10px;
@@ -215,15 +207,26 @@ body
     color: rgb(255, 162, 180);
 }
 
+/* Input Section */
 .line__content
 {
-    display: inline-block;
+    display: inline;
 
     white-space: pre-wrap;
-    word-break: break-word; /* Ensures words break properly */
+
+    overflow-wrap: break-word;
 }
 
-/* Add these styles to your CSS */
+.content__left
+{
+    overflow-wrap: break-word;
+}
+
+.content__right
+{
+    overflow-wrap: break-word;
+}
+
 .content__caret
 {
     position: relative;
@@ -235,6 +238,32 @@ body
 
     color: rgb(255, 255, 255);
     background-color: rgb(0, 0, 0); /* This will be your inverted foreground color */
+}
+
+/* Styling For Command Prints */
+.content__general
+{
+    color: white;
+}
+
+.content__error
+{
+    color: rgb(227, 88, 88);
+}
+
+.content__hint
+{
+    color: rgb(255, 244, 141);
+}
+
+.content__directory
+{
+    color: rgb(168, 148, 255);
+}
+
+.content__file
+{
+    color: rgb(255, 152, 217);
 }
 
 /* When hidden */
