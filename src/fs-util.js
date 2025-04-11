@@ -9,35 +9,34 @@
 ==================================================================================================*/
 
 /*  FSUtil Class Definition
-***************************************************************************************************/
+ ***************************************************************************************************/
 export class FSUtil {
-
     /**
      * @brief Trims the file extension from a file name if it is found.
      * @param {string} name - Name to be trimmed.
      * @returns - Trimmed name if extension was found, otherwise, returns the name provided.
      */
-    static trimExtension(name) {
+    static parseNameAndExtension(name) {
         if (!name) {
-            console.error('Null name provided to trimExtension()');
+            console.error("Null name provided to trimExtension()");
             return null;
         }
 
-        const lastDot = name.lastIndexOf('.');
+        const lastDot = name.lastIndexOf(".");
 
         // If the last dot is not the hidden file character, remove the extension
         if (lastDot > 0) {
-            const nameParts = name.split('.').filter((str) => str.length > 0);
+            const nameParts = name.split(".").filter((str) => str.length > 0);
             return {
                 name: nameParts[0],
-                extension: (nameParts.length > 1) ? nameParts[1] : null
-            }
+                extension: nameParts.length > 1 ? nameParts[1] : null,
+            };
         }
 
         // Return original name otherwise
         return {
-            name
-        }
+            name,
+        };
     }
 
     /**
@@ -46,14 +45,14 @@ export class FSUtil {
      * @returns {string[]} Ordered array of directory names to get to file path.
      */
     static tokenizePath(path) {
-        if (!path) {
-            console.error('Null path provided to tokenizePath()');
+        if (path === null) {
+            console.error("Null path provided to tokenizePath()");
             return null;
         }
 
-        const tokens = path.split('/').filter(item => item !== '');
+        const tokens = path.split("/").filter((item) => item !== "");
         for (const token of tokens) {
-            if (token.type === 'dir' && !this.isValidDirectoryName(token)) {
+            if (token.type === "dir" && !this.isValidDirectoryName(token)) {
                 return null;
             } else {
                 if (!this.isValidFileName(token)) {
@@ -62,7 +61,7 @@ export class FSUtil {
             }
         }
 
-        return tokens
+        return tokens;
     }
 
     /**
@@ -74,8 +73,8 @@ export class FSUtil {
         // TODO: Implement file name validation
         return {
             valid: true,
-            reasons: null
-        }
+            reasons: null,
+        };
     }
 
     /**
@@ -87,7 +86,7 @@ export class FSUtil {
         // TODO: Implement directory name validation
         return {
             valid: true,
-            reasons: null
-        }
+            reasons: null,
+        };
     }
 }

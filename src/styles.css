@@ -14,8 +14,6 @@ body
     overflow-x: hidden;
 
     min-height: 100vh;
-    margin: 0;
-    padding: 0;
 
     background-image: linear-gradient(135deg, rgb(77, 77, 77), rgb(33, 33, 33));
 }
@@ -41,8 +39,6 @@ body
 ==================================================================================================*/
 .terminal
 {
-    font-family: monospace;
-
     display: flex;
     flex-direction: column;
 
@@ -50,8 +46,9 @@ body
     margin: 25px auto;
 
     color: #fff;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, .3);
+    border-bottom-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+    box-shadow: 10px 10px 15px rgba(0, 0, 0, .496);
 }
 
 /*==================================================================================================
@@ -59,15 +56,9 @@ body
 ==================================================================================================*/
 .terminal__header
 {
-    position: relative;
-
     display: flex;
     align-items: center;
-    justify-content: space-between;
 
-    width: 100%;
-
-    color: white;
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
     background-color: rgb(21, 21, 21);
@@ -79,8 +70,7 @@ body
 
     position: absolute;
     left: 50%;
-
-    margin: 0;
+    /* used because absolute positioning is relative to left box border*/
 
     transform: translateX(-50%);
 }
@@ -147,22 +137,13 @@ body
 ==================================================================================================*/
 .terminal__window
 {
-    /* Add this to make sure it's a positioning context */
-    position: relative;
-    /* This can help with flexbox layouts */
-
     display: flex;
     flex-direction: column;
-    /* Keep existing properties */
 
     width: 100%;
     height: 100%;
     min-height: 650px;
-    max-height: 650px;
-    margin: 0;
-    padding: 0;
-
-    list-style-type: none;
+    max-height: 850px;
 
     border-bottom-right-radius: 10px;
     border-bottom-left-radius: 10px;
@@ -171,12 +152,8 @@ body
 
 .terminal__list
 {
-    /* Modify these properties */
     overflow-y: auto;
-    /* Add this to make sure it fills available space */
-    flex: 1;
 
-    margin: 0;
     padding-right: 10px;
     padding-left: 10px;
 
@@ -232,12 +209,8 @@ body
     position: relative;
 
     display: inline-block;
-    /*width: .6em;  Adjust based on your font */
-    /*height: 1.2em;  Adjust based on your font */
-    /*margin-left: -.6em;  Pull back to overlay character */
 
     color: rgb(255, 255, 255);
-    background-color: rgb(0, 0, 0); /* This will be your inverted foreground color */
 }
 
 /* Styling For Command Prints */

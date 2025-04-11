@@ -5,205 +5,228 @@
 * @date: 04/3/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
-* @brief: Contains inmplementation of the interpreter's mv command
+* @brief: Contains implementation of the interpreter's mv command
 ==================================================================================================*/
 
-import { Command } from '../command.js';
-import { ERROR_MESSAGES } from '../config.js';
-import { RESOLUTION } from '../file-system.js';
+import { ArgParser } from "../arg-parser.js"; // Import ArgParser
+import { Command } from "../command.js";
+import { ERROR_MESSAGES } from "../config.js";
+import { FSNode, RESOLUTION } from "../file-system.js"; // Import FSNode if needed, RESOLUTION
+import { FSUtil } from "../fs-util.js";
+import { OutputLine } from "../output-line.js"; // Import OutputLine
+
+/*==================================================================================================
+    Module Constants
+==================================================================================================*/
 
 const MV_ERRORS = {
-    FOLDER_NOT_EMPTY: (destPath) => `Cannot move folder into new directory: ${destPath} already `+
-                                    `exists, and is non empty`,
+    // Specific errors for mv
+    DIRECTORY_TO_FILE: "Cannot move directory onto non-directory.",
+    MULTIPLE_SOURCES_FILE_DESTINATION: "Cannot move multiple sources to a file destination.",
+    MUTLIPLE_SOURCES_NONEXISTANT_DESTINATION:
+        "Cannot move multiple sources to a non-existent destination.",
 };
 
-/*  Class Definition
-***************************************************************************************************/
+/*==================================================================================================
+    Class Definition: [MvCommand]
+==================================================================================================*/
+
 /**
  * @class MvCommand
- * @brief Command for moving/renaming files and directories
+ * @brief Command for moving (renaming) files and directories.
  */
 export class MvCommand extends Command {
-    static commandName = 'mv';
-    static description = 'Move (rename) files';
-    static usage = 'mv [switches] source target';
+    static commandName = "mv";
+    static description = "Move (rename) files";
+    static usage = "mv [switches] source... target"; // Adjusted usage
     static supportedArgs = [];
 
+    /* Constructor
+     ***********************************************************************************************/
     /**
-     * @brief Initializes a mv command instance
-     * @param {Object} data Object containing required dependencies
+     * @brief Initializes a mv command instance.
+     * @param {Object} data - Object containing required dependencies.
+     * @param {Filesystem} data.filesystem - Reference to the filesystem instance.
      */
     constructor(data) {
         super();
         this.filesystem = data.filesystem;
     }
 
+    /* Public Methods
+     ***********************************************************************************************/
     /**
-     * @brief Moves or renames files and directories
-     * @param {string[]} args Array of command arguments
-     * @return {Object} Result object with type ('output' or 'error') and information
+     * @brief Moves or renames files and directories from source(s) to target.
+     * @param {string[]} args - Array of command arguments (switches, sources, target).
+     * @return {Object} - Result object with type and output lines.
+     * @property {string} return.type - 'output' (only if errors occur), or 'ignore'.
+     * @property {OutputLine[]} return.lines - Contains error messages or hints.
      */
     execute(args) {
-        // TODO: Implement mv functionality
-        const lines = [] // container for all messages to print to the terminal
-        
-        // --- 1. ARGUMENT PARSING ---
+        const lines = []; // Container for all messages to print to the terminal
+
+        // --- 1. Argument Parsing ---
         const { switches, params } = ArgParser.argumentSplitter(args);
 
-        // Make sure command has support for provided switches
+        // Validate switches
         for (const switchName of switches) {
             if (!this.constructor.supportedArgs.includes(switchName)) {
-                lines.push(new OutputLine('error', ERROR_MESSAGES.INVALID_SWITCH(switchName)));
-                return {
-                    type: 'output',
-                    lines
-                }
+                lines.push(new OutputLine("error", ERROR_MESSAGES.INVALID_SWITCH(switchName)));
+                return { type: "output", lines };
             }
         }
 
-        // Make sure at least one source and destination is provided
+        // Ensure at least one source and one target
         if (params.length < 2) {
-            lines.push(new OutputLine('error', ERROR_MESSAGES.TOO_FEW_ARGS));
-            return {
-                type: 'output',
-                lines
-            }
+            lines.push(new OutputLine("error", ERROR_MESSAGES.TOO_FEW_ARGS));
+            lines.push(new OutputLine("hint", `usage: ${this.constructor.usage}`));
+            return { type: "output", lines };
         }
 
-
-        // --- 2. GATHER PATH INFORMATION ---
+        // --- 2. Separate Source(s) and Destination ---
         const destinationPath = params.pop();
         const sourcePaths = params;
         const sourceCount = sourcePaths.length;
 
-
-        // --- 3. GATHER DESTINATION INFORMATION ---
-        const { // Gather information on the destination path to make sure it exists
+        // --- 3. Resolve Destination Path ---
+        const {
             status: destRes,
-            targetNode: destNode,
-            parentNode: destParent,
-            targetName: destName,
-            errors: destResErrors
+            targetNode: destNode, // Will be null if destination doesnt already exist
+            parentNode: destParent, // Must exist to continue
+            targetName: destName, // Full destination name, must trim for renaming
+            errors: destResErrors,
         } = this.filesystem.resolvePath(destinationPath, {
-            createIntermediary: false,  // don't create intermediary directories
-            targetMustHaveType: null,   // copying can be done to files and directories
+            createIntermediary: false, // mv doesn't create intermediate dirs for the target
+            targetMustHaveType: null,
         });
+        const { name: trimmedDestName } = FSUtil.parseNameAndExtension(destName);
 
-        // Fail if destination path was invalid
-        if (destRes !== RESOLUTION.PARENT_FOUND_TARGET_MISSING && destRes !== RESOLUTION.FOUND) {
-            for (const error of destResErrors) {
-                lines.push(new OutputLine(error.type, error.content));
-            }
-            return { // early return
-                type: 'output',
-                lines
-            }
+        // Error if destination path resolution failed badly
+        if (
+            destRes === RESOLUTION.INVALID_PATH ||
+            (destRes === RESOLUTION.NOT_A_DIRECTORY && sourceCount === 1)
+        ) {
+            lines.push(...destResErrors.map((e) => new OutputLine(e.type, e.content)));
+            return { type: "output", lines };
         }
 
-        // Fail if multiple sources and destination is a file
-        if (sourceCount > 1 && destNode.type !== 'dir') {
-            lines.push(new OutputLine('error', MV_ERRORS.MULTIPLE_SOURCES_FILE_DESTINATION));
-            return { // early return
-                type: 'output',
-                lines
-            }
+        // --- 4. Validate Source/Destination Combination ---
+        if (sourceCount > 1 && destRes !== RESOLUTION.FOUND) {
+            lines.push(new OutputLine("error", MV_ERRORS.MUTLIPLE_SOURCES_NONEXISTANT_DESTINATION));
+            return { type: "output", lines };
+        }
+        if (sourceCount > 1 && destNode && !destNode.isDirectory) {
+            lines.push(new OutputLine("error", MV_ERRORS.MULTIPLE_SOURCES_FILE_DESTINATION));
+            return { type: "output", lines };
         }
 
-        // Fail if destination doesn't yet exist, and there are multiple sources
-        if (destRes === RESOLUTION.PARENT_FOUND_TARGET_MISSING && sourceCount > 1) {
-            lines.push(new OutputLine('error', MV_ERRORS.MUTLIPLE_SOURCES_NONEXISTANT_DESTINATION));
-            return { // early return
-                type: 'output',
-                lines
-            }
-        }
-
-
-        // --- 4. ITERATE THROUGH THE SOURCES ---
+        // --- 5. Process Each Source ---
         for (const sourcePath of sourcePaths) {
-            const { // gather information on the source path
+            const {
                 status: srcRes,
                 targetNode: srcNode,
                 parentNode: srcParent,
-                targetName: srcName,
-                errors: srcResErrors
+                targetName: srcName, // Full name of the source node itself
+                errors: srcResErrors,
             } = this.filesystem.resolvePath(sourcePath, {
-                createIntermediary: false,  // we are looking for an existing file/directory
-                targetMustHaveType: null    // source can be a file or directory
+                createIntermediary: false,
+                targetMustHaveType: null,
             });
 
-            // If the source wansn't found, push errors encounterd during traversal, and continue
+            // If source doesn't exist, report error and skip
             if (srcRes !== RESOLUTION.FOUND) {
-                for (const error of srcResErrors) {
-                    lines.push(new OutputLine(error.type, error.content));
-                }
+                lines.push(...srcResErrors.map((e) => new OutputLine(e.type, e.content)));
                 continue;
             }
 
-            // Case: Source is a Directory
-            if (srcNode.type === 'dir') {
-                // Case: Destination already exists
-                if (destNode) {
-                    // Make sure destination is not a file
-                    if (destNode.type !== 'dir') {
-                        lines.push(new OutputLine('error', MV_ERRORS.DIRECTORY_TO_FILE));
-                        continue;
-                    }
-
-                    // Make sure destination doesnt already have src
-                    const srcInDest = destNode.get(srcName); // Used to check if dest already has src
-                    if (srcInDest && srcInDest.children.size > 0) {
-                        lines.push(new OutputLine('error', MV_ERRORS.FOLDER_NOT_EMPTY(destinationPath)))
-                    }
-
-                    // Move source directory and its contents into destination directory
-                    srcParent.removeChild(srcName);
-                    destNode.addChild(srcNode);
-
-                // Case: Destination doesnt yet exist
-                } else {
-                    // Move the child if necessary, and rename it
-                    srcParent.removeChild(srcName);
-                    srcNode.setName(destName);
-                    destParent.addChild(srcNode);
-                }
-
-            // Case: Source is a File
-            } else {
-                // Case: Destination already exists
-                if (destNode) {
-                    // Case: Destination is a directory
-                    if (destNode.type === 'dir') {
-
-                        // Move source file inside destination directory
-                        srcParent.removChild(srcNode);
-                        destNode.addChild(srcNode);
-                        
-                    // Case: Destination is a file
-                    } else  {
-
-                        // Overwrite file with source file
-                        srcParent.removeChild(srcNode);
-                        destParent.removeChild(destName);
-                        destParent.addChild(srcNode);
-
-                    }
-
-                // Case: Destination doesnt yet exist
-                } else {
-                    // Move the child if necessary, and rename it
-                    srcParent.removeChild(srcName);
-                    srcNode.setName(destName);
-                    destParent.addChild(srcNode);
-                }
-
+            // --- 4. Perform Safety Checks ---
+            // Prevent moving of root directory
+            if (srcNode === this.filesystem.root) {
+                lines.push(new OutputLine("error", ERROR_MESSAGES.PRESERVED_DIR(targetName)));
+                continue;
             }
-        }
+            // Prevent moving of current working directory
+            if (srcNode === this.filesystem.cwd) {
+                lines.push(new OutputLine("error", `Cannot move '.', skipping`)); // More specific error
+                continue;
+            }
+            // Prevent moving of cwd's parent directory using '..' specifically
+            if (sourcePath === ".." || srcNode === this.filesystem.cwd.parent) {
+                // Check both path string and resolved node
+                lines.push(new OutputLine("error", `Cannot move '..', skipping`));
+                continue;
+            }
+            // Prevent moving a directory into itself or its own child
+            if (destNode && destNode.getFilePath().startsWith(srcNode.getFilePath)) {
+                lines.push(
+                    new OutputLine(
+                        "error",
+                        `Cannot move '${sourcePath}' to '${targetPathInDest}': File exists`
+                    )
+                );
+            }
 
-        // --- 5. RETURN ---
+            // --- 5a. Scenario: Target is an Existing Directory ---
+            if (destNode && destNode.isDirectory) {
+                const targetPathInDest = `${destinationPath}/${srcNode.getFullName()}`;
+                const existingNodeInDest = destNode.getChild(srcNode.getFullName());
+
+                // Check if target already exists in destination directory
+                if (existingNodeInDest) {
+                    lines.push(
+                        new OutputLine(
+                            "error",
+                            `Cannot move '${sourcePath}' to '${targetPathInDest}': File exists`
+                        )
+                    );
+                    continue;
+                }
+
+                // Move source node into destination directory
+                srcParent.removeChild(srcNode.getFullName());
+                destNode.addChild(srcNode); // addChild handles setting the parent
+
+                // --- 5b. Scenario: Target is an Existing File (Only valid for single source) ---
+            } else if (destNode && !destNode.isDirectory) {
+                if (sourceCount > 1) {
+                    // Should have been caught earlier, but double-check
+                    lines.push(
+                        new OutputLine("error", MV_ERRORS.MULTIPLE_SOURCES_FILE_DESTINATION)
+                    );
+                    // No need to continue loop if this happens
+                    return { type: "output", lines };
+                }
+                if (srcNode.isDirectory) {
+                    lines.push(new OutputLine("error", MV_ERRORS.DIRECTORY_TO_FILE));
+                    continue; // Skip this source
+                }
+                // Overwrite destination file with source file
+                srcParent.removeChild(srcNode.getFullName()); // Remove source from original location
+                destParent.removeChild(destName); // Remove original destination file
+                srcNode.setName(trimmedDestName); // Rename source node to destination name before adding
+                destParent.addChild(srcNode); // Add source node (now renamed) to destination parent
+
+                // --- 5c. Scenario: Target Does Not Exist (Rename/Move) ---
+            } else if (destRes === RESOLUTION.PARENT_FOUND_TARGET_MISSING) {
+                // Move and rename the source node
+                srcParent.removeChild(srcNode.getFullName());
+                srcNode.setName(trimmedDestName); // Rename source node
+                destParent.addChild(srcNode); // Add to the target's parent directory
+
+                // --- 5d. Scenario: Invalid Destination (e.g., component isn't a directory) ---
+            } else {
+                lines.push(
+                    new OutputLine("error", `Invalid target destination '${destinationPath}'`)
+                );
+                lines.push(...destResErrors.map((e) => new OutputLine(e.type, e.content))); // Add details
+                continue; // Skip this source
+            }
+        } // End loop through sources
+
+        // --- 6. Return Result ---
         return {
-            type: (errors.length > 0) ? 'output' : 'ignore',
-            lines
-        }
+            type: lines.length > 0 ? "output" : "ignore",
+            lines,
+        };
     }
 }

@@ -9,7 +9,7 @@
 ==================================================================================================*/
 
 /*  Class Definition
-***************************************************************************************************/
+ ***************************************************************************************************/
 /**
  * @class TestSuite
  * @brief Runs a series of standard usage tests against the Terminal instance to ensure commands function correctly.
@@ -19,8 +19,8 @@ export class TestSuite {
      * Initializes the test suite.
      * @param {Terminal} terminal - An instance of the Terminal class. Requires a 'run' method.
      */
-    constructor(terminal) { 
-        if (!terminal || typeof terminal.run !== 'function') {
+    constructor(terminal) {
+        if (!terminal || typeof terminal.run !== "function") {
             throw new Error("TestSuite requires a valid Terminal instance with a 'run' method.");
         }
         this.terminal = terminal;
@@ -42,7 +42,7 @@ export class TestSuite {
 
         // Wait for the specified delay if needed
         if (delayMs > 0) {
-            await new Promise(resolve => setTimeout(resolve, delayMs));
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
 
         console.log("--- Test Complete ---");
@@ -53,19 +53,27 @@ export class TestSuite {
      */
     async testPwd() {
         console.log("\n===== Testing PWD =====");
+
         // Test 1: Print the initial working directory (should be home: ~)
         await this._runCommand("pwd", "PWD Test 1: Print initial working directory");
 
         // Test 2: Change directory and print the new working directory
         await this._runCommand("cd Documents", "PWD Test 2 (Setup): Change directory to Documents");
-        await this._runCommand("pwd", "PWD Test 2: Print working directory after changing to Documents");
+        await this._runCommand(
+            "pwd",
+            "PWD Test 2: Print working directory after changing to Documents"
+        );
 
         // Test 3: Change back to the parent directory and print
         await this._runCommand("cd ..", "PWD Test 3 (Setup): Change back to parent directory");
-        await this._runCommand("pwd", "PWD Test 3: Print working directory after returning to parent");
+        await this._runCommand(
+            "pwd",
+            "PWD Test 3: Print working directory after returning to parent"
+        );
 
         // Cleanup: Ensure we are back home for subsequent tests
         await this._runCommand("cd ~", "PWD Cleanup: Return to home directory");
+
         console.log("===== PWD Testing Finished =====");
     }
 
@@ -74,6 +82,7 @@ export class TestSuite {
      */
     async testLs() {
         console.log("\n===== Testing LS =====");
+
         // Test 1: List the current directory (home)
         await this._runCommand("ls", "LS Test 1: List current directory (~/user)");
 
@@ -84,10 +93,23 @@ export class TestSuite {
         await this._runCommand("ls /", "LS Test 3: List root directory '/' contents");
 
         // Test 4: Attempt to list a non-existent directory (expect error)
-        await this._runCommand("ls non_existent_dir", "LS Test 4: List non-existent directory (expect error)");
+        await this._runCommand(
+            "ls non_existent_dir",
+            "LS Test 4: List non-existent directory (expect error)"
+        );
 
-        // Test 5: Attempt to list a file (should show the file itself or produce an error)
-        await this._runCommand("ls Documents/resume.txt", "LS Test 5: Attempt to list a file (expect file name or error)");
+        // Test 5: Attempt to list a non-existent parent directory (expect error)
+        await this._runCommand(
+            "ls /..",
+            "LS Test 5: List non-existent parent directory (expect error)"
+        );
+
+        // Test 6: Attempt to list a file (should show the file itself)
+        await this._runCommand(
+            "ls Documents/resume.txt",
+            "LS Test 6: Attempt to list a file (expect file name or error)"
+        );
+
         console.log("===== LS Testing Finished =====");
     }
 
@@ -96,6 +118,7 @@ export class TestSuite {
      */
     async testCd() {
         console.log("\n===== Testing CD =====");
+
         // Initial state check
         await this._runCommand("pwd", "CD Test (Initial): Show directory before cd tests");
 
@@ -105,17 +128,32 @@ export class TestSuite {
         await this._runCommand("pwd", "CD Test 1: Verify current directory is 'Documents'");
 
         // Test 2: Attempt to change to a non-existent directory relative to current
-        await this._runCommand("cd non_existent_dir", "CD Test 2: Attempt cd to non-existent relative directory (expect error)");
-        await this._runCommand("pwd", "CD Test 2: Verify directory remains 'Documents' after failed cd");
+        await this._runCommand(
+            "cd non_existent_dir",
+            "CD Test 2: Attempt cd to non-existent relative directory (expect error)"
+        );
+        await this._runCommand(
+            "pwd",
+            "CD Test 2: Verify directory remains 'Documents' after failed cd"
+        );
 
         // --- Absolute Paths ---
         // Test 3: Change to an existing directory using an absolute path
-        await this._runCommand("cd /home/user/Pictures", "CD Test 3: Change to 'Pictures' (absolute path)");
+        await this._runCommand(
+            "cd /home/user/Pictures",
+            "CD Test 3: Change to 'Pictures' (absolute path)"
+        );
         await this._runCommand("pwd", "CD Test 3: Verify current directory is 'Pictures'");
 
         // Test 4: Attempt to change to a non-existent directory using an absolute path
-        await this._runCommand("cd /absolute/non_existent", "CD Test 4: Attempt cd to non-existent absolute directory (expect error)");
-        await this._runCommand("pwd", "CD Test 4: Verify directory remains 'Pictures' after failed cd");
+        await this._runCommand(
+            "cd /absolute/non_existent",
+            "CD Test 4: Attempt cd to non-existent absolute directory (expect error)"
+        );
+        await this._runCommand(
+            "pwd",
+            "CD Test 4: Verify directory remains 'Pictures' after failed cd"
+        );
 
         // --- Special Paths ---
         // Test 5: Change to the parent directory using '..'
@@ -140,8 +178,22 @@ export class TestSuite {
         await this._runCommand("cd", "CD Test 9: Change to home directory using empty 'cd'");
         await this._runCommand("pwd", "CD Test 9: Verify current directory is home (~/user)");
 
+        // Test 10: Combination
+        await this._runCommand(
+            "cd /../~/Documents/project_files/../././../..",
+            "CD Test 10: Change the directory (expected: /home"
+        );
+        await this._runCommand("pwd", "CD Test 10: Verify current directory is home (/home)");
+
+        // Test 11: Improper arguments usage
+        await this._runCommand(
+            "cd Folder_1 Folder_2",
+            "CD Test 11: Attempt cd on multiple directories (should print error and usage hint)"
+        );
+
         // Cleanup: Ensure we are back home
         await this._runCommand("cd ~", "CD Cleanup: Ensure return to home directory");
+
         console.log("===== CD Testing Finished =====");
     }
 
@@ -150,56 +202,94 @@ export class TestSuite {
      */
     async testMkdir() {
         console.log("\n===== Testing MKDIR =====");
-        await this._runCommand("ls", "MKDIR Test (Initial): List contents before creating directories");
+
+        // Setup: List initial directory
+        await this._runCommand(
+            "ls",
+            "MKDIR Test (Initial): List contents before creating directories"
+        );
 
         // Test 1: Create a single directory
-        await this._runCommand("mkdir test_dir_1", "MKDIR Test 1: Create a single directory 'test_dir_1'");
+        await this._runCommand(
+            "mkdir test_dir_1",
+            "MKDIR Test 1: Create a single directory 'test_dir_1'"
+        );
         await this._runCommand("ls", "MKDIR Test 1: Verify 'test_dir_1' creation");
 
         // Test 2: Attempt to create an already existing directory (expect error)
-        await this._runCommand("mkdir test_dir_1", "MKDIR Test 2: Attempt to create existing directory 'test_dir_1' (expect error)");
+        await this._runCommand(
+            "mkdir test_dir_1",
+            "MKDIR Test 2: Attempt to create existing directory 'test_dir_1' (expect error)"
+        );
 
         // Test 3: Create multiple directories at once
-        await this._runCommand("mkdir test_dir_2 test_dir_3", "MKDIR Test 3: Create multiple directories 'test_dir_2' 'test_dir_3'");
+        await this._runCommand(
+            "mkdir test_dir_2 test_dir_3",
+            "MKDIR Test 3: Create multiple directories 'test_dir_2' 'test_dir_3'"
+        );
         await this._runCommand("ls", "MKDIR Test 3: Verify 'test_dir_2' and 'test_dir_3' creation");
 
         // Test 4: Create nested directories using the '-p' flag (parents should be created)
-        await this._runCommand("mkdir -p nested/dir/creation", "MKDIR Test 4: Create nested directories 'nested/dir/creation' with -p flag");
-        await this._runCommand("ls nested/dir", "MKDIR Test 4: Verify nested directory 'creation' exists");
+        await this._runCommand(
+            "mkdir -p nested/dir/creation",
+            "MKDIR Test 4: Create nested directories 'nested/dir/creation' with -p flag"
+        );
+        await this._runCommand(
+            "ls nested/dir",
+            "MKDIR Test 4: Verify nested directory 'creation' exists"
+        );
 
         // Test 5: Attempt to create nested directories without '-p' (expect error if parent doesn't exist)
-        await this._runCommand("mkdir deep/nonexistent/path", "MKDIR Test 5: Attempt to create nested directories without -p (expect error)");
+        await this._runCommand(
+            "mkdir deep/nonexistent/path",
+            "MKDIR Test 5: Attempt to create nested directories without -p (expect error)"
+        );
 
         // Cleanup: Remove all created directories (use rm -r for non-empty/nested ones)
-        await this._runCommand("rm -r test_dir_1 test_dir_2 test_dir_3 nested", "MKDIR Cleanup: Remove created test directories");
+        await this._runCommand(
+            "rm -r test_dir_1 test_dir_2 test_dir_3 nested",
+            "MKDIR Cleanup: Remove created test directories"
+        );
         // Attempt cleanup for 'deep', might error if its parent wasn't created, which is expected
-        await this._runCommand("rm -r deep", "MKDIR Cleanup: Attempt removal of 'deep' (may error harmlessly)");
+        await this._runCommand(
+            "rm -r deep",
+            "MKDIR Cleanup: Attempt removal of 'deep' (will error harmlessly)"
+        );
         await this._runCommand("ls", "MKDIR Cleanup: Verify cleanup");
+
         console.log("===== MKDIR Testing Finished =====");
     }
 
     /**
      * @brief Tests the 'echo' command.
      */
-     async testEcho() {
+    async testEcho() {
         console.log("\n===== Testing ECHO =====");
+
         // Test 1: Echo a simple string
         await this._runCommand("echo Hello World", "ECHO Test 1: Echo simple string 'Hello World'");
 
         // Test 2: Echo a string with multiple spaces, using quotes
-        await this._runCommand("echo 'String with   multiple spaces'", "ECHO Test 2: Echo string with multiple spaces (single quoted)");
+        await this._runCommand(
+            "echo 'String with   multiple spaces'",
+            "ECHO Test 2: Echo string with multiple spaces (single quoted)"
+        );
 
-        // Test 3: Echo a string using double quotes
-        await this._runCommand("echo \"Double quoted string\"", "ECHO Test 3: Echo double-quoted string");
+        // Test 3: Echo a string with multiple spaces, without quotes
+        await this._runCommand(
+            "echo String with   multiple spaces",
+            "ECHO Test 2: Echo string with multiple spaces (unquoted)"
+        );
 
-        // Test 4: Echo with no arguments (should print a newline)
-        await this._runCommand("echo", "ECHO Test 4: Echo empty string (expect newline)");
+        // Test 4: Echo a string using double quotes
+        await this._runCommand(
+            'echo "Double quoted string"',
+            "ECHO Test 4: Echo double-quoted string"
+        );
 
-        // Note: Redirection tests depend on '>' being implemented in your shell/filesystem.
-        // Test 5: Echo and redirect output to a file
-        // await this._runCommand("echo 'Redirect content' > echo_test.txt", "ECHO Test 5: Echo with redirection to 'echo_test.txt'");
-        // await this._runCommand("cat echo_test.txt", "ECHO Test 5: Verify redirection content (Requires cat)");
-        // await this._runCommand("rm echo_test.txt", "ECHO Test 5: Cleanup redirection test file");
+        // Test 5: Echo with no arguments (should print a newline)
+        await this._runCommand("echo", "ECHO Test 5: Echo empty string (expect newline)");
+
         console.log("===== ECHO Testing Finished =====");
     }
 
@@ -208,186 +298,353 @@ export class TestSuite {
      */
     async testCat() {
         console.log("\n===== Testing CAT =====");
-        // Setup: Create test files using echo (assumes echo works)
-        await this._runCommand("echo 'Content for cat test 1' > cat_test1.txt", "CAT Setup: Create cat_test1.txt");
-        await this._runCommand("echo 'Content for cat test 2' > cat_test2.txt", "CAT Setup: Create cat_test2.txt");
-        await this._runCommand("mkdir cat_test_dir", "CAT Setup: Create directory 'cat_test_dir'");
-        await this._runCommand("ls", "CAT Setup: List contents after setup");
+        // Setup: Navigate to documents directory
+        await this._runCommand(
+            "cd ~/Documents",
+            "CAT Setup: Navigate to Documents directory for testing"
+        );
 
         // Test 1: Cat a single existing file
-        await this._runCommand("cat cat_test1.txt", "CAT Test 1: Display content of single file 'cat_test1.txt'");
+        await this._runCommand(
+            "cat resume.txt",
+            "CAT Test 1: Display content of single file 'resume.txt'"
+        );
 
         // Test 2: Cat multiple existing files (output should be concatenated)
-        await this._runCommand("cat cat_test1.txt cat_test2.txt", "CAT Test 2: Display content of multiple files");
+        await this._runCommand(
+            "cat notes.txt project_ideas.txt",
+            "CAT Test 2: Display content of multiple files"
+        );
 
         // Test 3: Attempt to cat a non-existent file (expect error)
-        await this._runCommand("cat non_existent_file.txt", "CAT Test 3: Attempt cat on non-existent file (expect error)");
+        await this._runCommand(
+            "cat non_existent_file.txt",
+            "CAT Test 3: Attempt cat on non-existent file (expect error)"
+        );
 
         // Test 4: Attempt to cat a directory (expect error)
-        await this._runCommand("cat cat_test_dir", "CAT Test 4: Attempt cat on a directory (expect error)");
+        await this._runCommand(
+            "cat project_files",
+            "CAT Test 4: Attempt cat on a directory (expect error)"
+        );
 
-        // Cleanup: Remove test files and directory
-        await this._runCommand("rm cat_test1.txt cat_test2.txt", "CAT Cleanup: Remove test files");
-        await this._runCommand("rm -r cat_test_dir", "CAT Cleanup: Remove test directory");
+        // Test 5: Attempt to cat a file in another directory
+        await this._runCommand(
+            "cat project_files/config.json",
+            "CAT Test 5: Attempt cat on file in seperate directory"
+        );
+
+        // Test 6: Improper arguments usage
+        await this._runCommand(
+            "cat",
+            "CAT Test 6: Attempt cat on nothing (should print error and usage hint)"
+        );
+
+        // Cleanup: Ensure we are back home
+        await this._runCommand("cd ~", "CD Cleanup: Ensure return to home directory");
         console.log("===== CAT Testing Finished =====");
     }
 
     /**
-     * @brief Tests the 'cp' (copy) command.
+     * @brief Tests the 'cp' (copy) command using the existing filesystem structure.
      */
     async testCp() {
         console.log("\n===== Testing CP =====");
-        // Setup: Create source files and directories
-        await this._runCommand("echo 'Source file content.' > cp_source.txt", "CP Setup: Create source file 'cp_source.txt'");
-        await this._runCommand("mkdir cp_dir_src cp_dir_dest", "CP Setup: Create source 'cp_dir_src' and destination 'cp_dir_dest' directories");
-        await this._runCommand("echo 'Nested file content.' > cp_dir_src/nested.txt", "CP Setup: Create nested file 'cp_dir_src/nested.txt'");
-        await this._runCommand("ls", "CP Setup: List contents before copy tests");
-        await this._runCommand("ls cp_dir_src", "CP Setup: List source directory contents");
-        await this._runCommand("ls cp_dir_dest", "CP Setup: List destination directory contents (should be empty)");
 
-        // Test 1: Copy a file to a new file name
-        await this._runCommand("cp cp_source.txt cp_target_file.txt", "CP Test 1: Copy file 'cp_source.txt' to 'cp_target_file.txt'");
-        await this._runCommand("ls", "CP Test 1: Verify 'cp_target_file.txt' exists");
-        await this._runCommand("cat cp_target_file.txt", "CP Test 1: Verify copied file content (Requires cat)");
+        // --- Setup ---
+        // Ensure we start in the user's home directory where test files exist
+        await this._runCommand("cd ~", "CP Setup: Go to home directory (~/user)");
+        await this._runCommand("pwd", "CP Setup: Verify current directory");
+        // Optional: Clear screen
+        await this._runCommand("clear", "CP Setup: Clearing screen");
 
-        // Test 2: Copy a file into an existing directory
-        await this._runCommand("cp cp_source.txt cp_dir_dest", "CP Test 2: Copy file 'cp_source.txt' into directory 'cp_dir_dest'");
-        await this._runCommand("ls cp_dir_dest", "CP Test 2: Verify 'cp_source.txt' copied into 'cp_dir_dest'");
+        // Create a dedicated destination directory for copy tests
+        await this._runCommand(
+            "mkdir cp_test_dest_area",
+            "CP Setup: Create destination directory 'cp_test_dest_area'"
+        );
 
-        // Test 3: Attempt to copy a directory without the recursive flag (expect error)
-        await this._runCommand("cp cp_dir_src cp_dir_dest", "CP Test 3: Attempt copy directory 'cp_dir_src' without -r (expect error)");
+        // Verify initial state
+        await this._runCommand("ls Documents", "CP Setup: List contents of source 'Documents'");
+        await this._runCommand(
+            "ls cp_test_dest_area",
+            "CP Setup: List destination directory (should be empty)"
+        );
 
-        // Test 4: Copy a directory recursively into another directory
-        await this._runCommand("cp -r cp_dir_src cp_dir_dest/copied_dir", "CP Test 4: Copy directory 'cp_dir_src' recursively to 'cp_dir_dest/copied_dir'");
-        await this._runCommand("ls cp_dir_dest", "CP Test 4: Verify 'copied_dir' exists in 'cp_dir_dest'");
-        await this._runCommand("ls cp_dir_dest/copied_dir", "CP Test 4: Verify contents of recursively copied directory");
+        // --- Test Cases ---
 
-        // Test 5: Copy multiple files/items into a directory (if supported)
-        await this._runCommand("cp cp_source.txt cp_target_file.txt cp_dir_dest", "CP Test 5: Copy multiple items to 'cp_dir_dest'");
-        await this._runCommand("ls cp_dir_dest", "CP Test 5: Verify multiple items copied");
+        // Test 1: Copy an existing file to a new file name in the destination area
+        await this._runCommand(
+            "cp Documents/resume.txt cp_test_dest_area/resume_copy.txt",
+            "CP Test 1: Copy '~/Documents/resume.txt' to '~/cp_test_dest_area/resume_copy.txt'"
+        );
+        await this._runCommand(
+            "ls cp_test_dest_area",
+            "CP Test 1: Verify 'resume_copy.txt' exists in destination"
+        );
+        await this._runCommand(
+            "cat cp_test_dest_area/resume_copy.txt",
+            "CP Test 1: Verify 'resume_copy.txt' content is the same"
+        );
 
-        // Cleanup: Remove all created files and directories
-        await this._runCommand("rm cp_source.txt cp_target_file.txt", "CP Cleanup: Remove test files");
-        await this._runCommand("rm -r cp_dir_src cp_dir_dest", "CP Cleanup: Remove test directories");
+        // Test 2: Copy an existing file into the destination directory
+        await this._runCommand(
+            "cp Documents/notes.txt cp_test_dest_area/",
+            "CP Test 2: Copy '~/Documents/notes.txt' into '~/cp_test_dest_area/'"
+        );
+        await this._runCommand(
+            "ls cp_test_dest_area",
+            "CP Test 2: Verify 'notes.txt' copied into destination"
+        );
+
+        // Test 3: Attempt to copy an existing directory without the recursive flag (expect error)
+        await this._runCommand(
+            "cp Documents/project_files cp_test_dest_area/",
+            "CP Test 3: Attempt copy directory '~/Documents/project_files' without -r (expect error)"
+        );
+        // Verify destination hasn't changed unexpectedly
+        await this._runCommand(
+            "ls cp_test_dest_area",
+            "CP Test 3: Verify destination after failed directory copy"
+        );
+
+        // Test 4: Copy an existing directory recursively into the destination directory
+        // It should create 'project_files' inside 'cp_test_dest_area'
+        await this._runCommand(
+            "cp -r Documents/project_files cp_test_dest_area/",
+            "CP Test 4: Copy directory '~/Documents/project_files' recursively into '~/cp_test_dest_area/'"
+        );
+        await this._runCommand(
+            "ls cp_test_dest_area",
+            "CP Test 4: Verify 'project_files' directory exists in destination"
+        );
+        await this._runCommand(
+            "ls cp_test_dest_area/project_files",
+            "CP Test 4: Verify contents (README.md, config.json) of recursively copied directory"
+        );
+
+        // Test 5: Copy multiple existing files into the destination directory
+        await this._runCommand(
+            "cp Documents/resume.txt Pictures/Photos/vacation/beach.jpg cp_test_dest_area/",
+            "CP Test 5: Copy multiple files ('resume.txt', 'beach.jpg') to '~/cp_test_dest_area/'"
+        );
+        await this._runCommand(
+            "ls cp_test_dest_area",
+            "CP Test 5: Verify 'resume.txt' and 'beach.jpg' exist in destination"
+        );
+
+        // Test 6: Copy a hidden file
+        await this._runCommand(
+            "cp .gitconfig cp_test_dest_area/gitconfig_copy",
+            "CP Test 6: Copy hidden file '~/.gitconfig' to '~/cp_test_dest_area/gitconfig_copy'"
+        );
+        await this._runCommand(
+            "ls cp_test_dest_area",
+            "CP Test 6: Verify 'gitconfig_copy' exists in destination"
+        );
+
+        // --- Error Conditions ---
+
+        // Test 7: Source does not exist
+        await this._runCommand(
+            "cp non_existent_source.txt cp_test_dest_area/",
+            "CP Test 7: Attempt copy non-existent source file (expect error)"
+        );
+
+        // Test 8: Destination path is invalid (parent directory does not exist)
+        await this._runCommand(
+            "cp Documents/resume.txt non_existent_dest_dir/resume_copy.txt",
+            "CP Test 8: Attempt copy to invalid destination path (expect error)"
+        );
+
+        // Test 9: Attempt to copy a directory onto an existing file path
+        // Setup: create a target file first
+        await this._runCommand(
+            "touch cp_test_dest_area/target_file.txt",
+            "CP Test 9 (Setup): Create target file 'target_file.txt'"
+        );
+        await this._runCommand(
+            "cp -r Documents/project_files cp_test_dest_area/target_file.txt",
+            "CP Test 9: Attempt copy directory onto existing file (expect error)"
+        );
+        // Verify the target file wasn't wrongly overwritten or removed
+        await this._runCommand(
+            "ls cp_test_dest_area",
+            "CP Test 9: Verify 'target_file.txt' still exists after failed copy"
+        );
+
+        // --- Cleanup ---
+        console.log("\n--- CP Cleanup ---");
+        // Go back home just in case a cd happened or test failed mid-operation
+        await this._runCommand("cd ~", "CP Cleanup: Go back to home directory");
+        // Remove the destination directory and all its contents
+        await this._runCommand(
+            "rm -r cp_test_dest_area",
+            "CP Cleanup: Remove the destination test directory 'cp_test_dest_area'"
+        );
+        await this._runCommand("ls", "CP Cleanup: Final listing of home directory");
+
         console.log("===== CP Testing Finished =====");
     }
 
     /**
-     * @brief Tests the 'mv' (move/rename) command based on mv.js implementation.
+     * @brief Tests the 'mv' (move/rename) command using items copied from the existing filesystem.
      */
     async testMv() {
-        console.log("\n===== Testing MV (Based on mv.js Implementation) =====");
+        console.log("\n===== Testing MV =====");
 
         // --- Setup ---
-        // Ensure we are in a clean state
+        // Start fresh in the home directory
         await this._runCommand("cd ~", "MV Setup: Go to home directory");
         await this._runCommand("pwd", "MV Setup: Verify current directory (~/user)");
-        await this._runCommand("rm -r mv_test_area", "MV Setup: Clean up previous test area (ignore errors)");
-        await this._runCommand("clear", "MV Setup: Clear the screen for tests")
-        // Create fresh items for testing in a dedicated test directory
-        await this._runCommand("mkdir mv_test_area", "MV Setup: Create main test directory 'mv_test_area'");
+        // Clean up any previous test area (ignore errors)
+        await this._runCommand(
+            "rm -r mv_test_area",
+            "MV Setup: Clean up previous test area (ignore errors)"
+        );
+        // Optional: Clear screen
+        await this._runCommand("clear", "MV Setup: Clear screen for tests");
+        // Create a dedicated test directory
+        await this._runCommand(
+            "mkdir mv_test_area",
+            "MV Setup: Create main test directory 'mv_test_area'"
+        );
         await this._runCommand("cd mv_test_area", "MV Setup: Enter test area 'mv_test_area'");
         await this._runCommand("pwd", "MV Setup: Verify current directory is mv_test_area");
-        // Create source files and directories
-        await this._runCommand("echo 'File A content' > fileA.txt", "MV Setup: Create source file fileA.txt");
-        await this._runCommand("echo 'File B content' > fileB.txt", "MV Setup: Create source file fileB.txt");
-        await this._runCommand("mkdir dir1", "MV Setup: Create source directory dir1");
-        await this._runCommand("echo 'Nested file' > dir1/nested.txt", "MV Setup: Create nested file in dir1");
-        await this._runCommand("mkdir dir2", "MV Setup: Create destination directory dir2");
-        await this._runCommand("echo 'Existing file in dir2' > dir2/existing_in_dir2.txt", "MV Setup: Create a file in dir2");
-        await this._runCommand("mkdir dir3_empty", "MV Setup: Create empty destination directory dir3_empty");
-        await this._runCommand("ls -a", "MV Setup: Initial listing of mv_test_area");
-        await this._runCommand("ls dir1", "MV Setup: Initial listing of dir1");
-        await this._runCommand("ls dir2", "MV Setup: Initial listing of dir2");
 
-        // --- File Operations ---
+        // Setup: Copy necessary items from the permanent filesystem into the test area
+        console.log("--- MV Setup: Copying items into test area ---");
+        await this._runCommand(
+            "cp ~/Documents/resume.txt file_to_rename.txt",
+            "MV Setup: Copy resume.txt for renaming test"
+        );
+        await this._runCommand(
+            "cp ~/Documents/notes.txt file_to_move.txt",
+            "MV Setup: Copy notes.txt for moving test"
+        );
+        await this._runCommand(
+            "cp -r ~/Documents/project_files dir_to_rename",
+            "MV Setup: Copy project_files/ dir for renaming test"
+        );
+        await this._runCommand(
+            "cp -r ~/Pictures/Photos/vacation dir_to_move", // Copies 'vacation' dir
+            "MV Setup: Copy vacation/ dir for moving test"
+        );
+        await this._runCommand(
+            "mkdir existing_dest_dir",
+            "MV Setup: Create an empty destination directory 'existing_dest_dir'"
+        );
+        await this._runCommand(
+            "cp ~/Documents/project_ideas.txt existing_dest_dir/target_to_overwrite.txt",
+            "MV Setup: Copy project_ideas.txt into dest dir for overwrite test"
+        );
+        await this._runCommand(
+            "cp ~/Downloads/wallpaper.jpg another_file.jpg",
+            "MV Setup: Copy wallpaper.jpg for multi-move error test"
+        );
 
-        // Test 1: Rename file (destination does not exist, same directory)
-        await this._runCommand("mv fileA.txt fileA_renamed.txt", "MV Test 1: Rename fileA.txt to fileA_renamed.txt");
-        await this._runCommand("ls", "MV Test 1: Verify fileA.txt gone, fileA_renamed.txt exists");
+        // Show the initial state of the test area
+        await this._runCommand("ls", "MV Setup: Initial listing of mv_test_area top-level");
+        await this._runCommand("ls dir_to_rename", "MV Setup: List initial dir_to_rename");
+        await this._runCommand("ls dir_to_move", "MV Setup: List initial dir_to_move"); // Should show beach.jpg etc.
+        await this._runCommand("ls existing_dest_dir", "MV Setup: List initial existing_dest_dir");
 
-        // Test 2: Move file into existing directory (destination is dir)
-        await this._runCommand("mv fileA_renamed.txt dir2/", "MV Test 2: Move fileA_renamed.txt into dir2");
-        await this._runCommand("ls", "MV Test 2: Verify fileA_renamed.txt gone from mv_test_area");
-        await this._runCommand("ls dir2", "MV Test 2: Verify fileA_renamed.txt exists in dir2");
+        // --- Core Test Cases ---
 
-        // Test 3: Move and rename file (destination file path does not exist, different directory)
-        await this._runCommand("mv fileB.txt dir3_empty/fileB_moved.txt", "MV Test 3: Move fileB.txt to dir3_empty as fileB_moved.txt");
-        await this._runCommand("ls", "MV Test 3: Verify fileB.txt gone from mv_test_area");
-        await this._runCommand("ls dir3_empty", "MV Test 3: Verify fileB_moved.txt exists in dir3_empty");
+        // Test 1: Rename file in the same directory
+        await this._runCommand(
+            "mv file_to_rename.txt renamed_file.txt",
+            "MV Test 1: Rename file_to_rename.txt -> renamed_file.txt"
+        );
+        await this._runCommand("ls", "MV Test 1: Verify renamed_file.txt exists, original is gone");
 
-        // Test 4: Overwrite existing file (destination is an existing file)
-        await this._runCommand("echo 'Overwrite source' > overwrite_src.txt", "MV Test 4 (Setup): Create overwrite_src.txt");
-        await this._runCommand("mv overwrite_src.txt dir2/existing_in_dir2.txt", "MV Test 4: Overwrite dir2/existing_in_dir2.txt with overwrite_src.txt");
-        await this._runCommand("ls", "MV Test 4: Verify overwrite_src.txt gone from mv_test_area");
-        await this._runCommand("ls dir2", "MV Test 4: Verify existing_in_dir2.txt still exists in dir2");
-        // Optional: Verify content if cat command is reliable
-        // await this._runCommand("cat dir2/existing_in_dir2.txt", "MV Test 4: Verify content of overwritten file (Requires cat)");
+        // Test 2: Move file into an existing directory
+        await this._runCommand(
+            "mv file_to_move.txt existing_dest_dir/",
+            "MV Test 2: Move file_to_move.txt into existing_dest_dir/"
+        );
+        await this._runCommand("ls", "MV Test 2: Verify file_to_move.txt gone from top-level");
+        await this._runCommand(
+            "ls existing_dest_dir",
+            "MV Test 2: Verify file_to_move.txt is inside existing_dest_dir"
+        );
 
-        // --- Directory Operations ---
+        // Test 3: Rename directory in the same directory
+        await this._runCommand(
+            "mv dir_to_rename renamed_dir",
+            "MV Test 3: Rename dir_to_rename -> renamed_dir"
+        );
+        await this._runCommand("ls", "MV Test 3: Verify renamed_dir exists, original is gone");
+        await this._runCommand(
+            "ls renamed_dir",
+            "MV Test 3: Verify contents (README.md, etc.) moved with renamed_dir"
+        );
 
-        // Test 5: Rename directory (destination does not exist, same directory)
-        await this._runCommand("mv dir1 dir1_renamed", "MV Test 5: Rename dir1 to dir1_renamed");
-        await this._runCommand("ls", "MV Test 5: Verify dir1 gone, dir1_renamed exists");
-        await this._runCommand("ls dir1_renamed", "MV Test 5: Verify contents of dir1_renamed (nested.txt)");
+        // Test 4: Move directory into an existing directory
+        await this._runCommand(
+            "mv dir_to_move existing_dest_dir/", // Should become existing_dest_dir/vacation
+            "MV Test 4: Move dir_to_move (vacation/) into existing_dest_dir/"
+        );
+        await this._runCommand("ls", "MV Test 4: Verify dir_to_move gone from top-level");
+        await this._runCommand(
+            "ls existing_dest_dir",
+            "MV Test 4: Verify 'vacation' directory is inside existing_dest_dir"
+        );
+        await this._runCommand(
+            "ls existing_dest_dir/vacation",
+            "MV Test 4: Verify contents (beach.jpg, etc.) moved with vacation/"
+        );
 
-        // Test 6: Move directory into existing directory
-        await this._runCommand("mv dir1_renamed dir2/", "MV Test 6: Move dir1_renamed into dir2");
-        await this._runCommand("ls", "MV Test 6: Verify dir1_renamed gone from mv_test_area");
-        await this._runCommand("ls dir2", "MV Test 6: Verify dir1_renamed exists inside dir2");
-        await this._runCommand("ls dir2/dir1_renamed", "MV Test 6: Verify contents of moved dir1_renamed");
-
-        // Test 7: Move and rename directory (destination path does not exist, different directory)
-        // Setup: Create a dir to move
-        await this._runCommand("mkdir dir_to_move", "MV Test 7 (Setup): Create dir_to_move");
-        await this._runCommand("echo 'content' > dir_to_move/file.txt", "MV Test 7 (Setup): Add content to dir_to_move");
-        await this._runCommand("mv dir_to_move dir3_empty/dir_moved_renamed", "MV Test 7: Move dir_to_move into dir3_empty as dir_moved_renamed");
-        await this._runCommand("ls", "MV Test 7: Verify dir_to_move gone from mv_test_area");
-        await this._runCommand("ls dir3_empty", "MV Test 7: Verify dir_moved_renamed exists in dir3_empty");
-        await this._runCommand("ls dir3_empty/dir_moved_renamed", "MV Test 7: Verify contents of moved/renamed directory");
-
-
-        // --- Multiple Source Operations ---
-
-        // Test 8: Move multiple files into existing directory
-        await this._runCommand("echo 'multi1' > multi1.txt", "MV Test 8 (Setup): Create multi1.txt");
-        await this._runCommand("echo 'multi2' > multi2.txt", "MV Test 8 (Setup): Create multi2.txt");
-        await this._runCommand("mv multi1.txt multi2.txt dir3_empty/", "MV Test 8: Move multi1.txt and multi2.txt into dir3_empty");
-        await this._runCommand("ls", "MV Test 8: Verify multi1.txt and multi2.txt gone from mv_test_area");
-        await this._runCommand("ls dir3_empty", "MV Test 8: Verify multi1.txt and multi2.txt exist in dir3_empty");
-
+        // Test 5: Overwrite an existing file with a moved file
+        await this._runCommand(
+            "mv renamed_file.txt existing_dest_dir/target_to_overwrite.txt",
+            "MV Test 5: Move renamed_file.txt onto existing_dest_dir/target_to_overwrite.txt (Overwrite)"
+        );
+        await this._runCommand("ls", "MV Test 5: Verify renamed_file.txt is gone from top-level");
+        await this._runCommand(
+            "ls existing_dest_dir",
+            "MV Test 5: Verify target_to_overwrite.txt still exists (content changed)"
+        );
+        // Optional: Check content if cat is reliable
+        // await this._runCommand("cat existing_dest_dir/target_to_overwrite.txt", "MV Test 5: Verify content (should be from resume.txt)");
 
         // --- Error Conditions ---
 
-        // Test 9: Source does not exist
-        await this._runCommand("mv non_existent_file.txt .", "MV Test 9: Attempt to move non-existent source (expect error)");
+        // Test 6: Source does not exist
+        await this._runCommand(
+            "mv non_existent_file.txt .",
+            "MV Test 6: Attempt move non-existent source (expect error)"
+        );
 
-        // Test 10: Destination path is invalid (parent directory does not exist)
-        await this._runCommand("echo 'err test' > err_file.txt", "MV Test 10 (Setup): Create file for error test");
-        await this._runCommand("mv err_file.txt /no/such/dir/new_name.txt", "MV Test 10: Attempt move to invalid destination path (expect error)");
-        await this._runCommand("rm err_file.txt", "MV Test 10 (Cleanup): Remove error test file");
+        // Test 7: Attempt to move a directory onto an existing file
+        await this._runCommand(
+            "mv renamed_dir existing_dest_dir/file_to_move.txt", // Use the file moved in Test 2
+            "MV Test 7: Attempt move directory 'renamed_dir' onto file 'file_to_move.txt' (expect error)"
+        );
+        // Verify both source and target still exist
+        await this._runCommand(
+            "ls",
+            "MV Test 7: Verify 'renamed_dir' still exists after failed move"
+        );
+        await this._runCommand(
+            "ls existing_dest_dir",
+            "MV Test 7: Verify 'file_to_move.txt' still exists after failed move"
+        );
 
-        // Test 11: Attempt to move directory onto an existing file
-        await this._runCommand("mkdir err_dir", "MV Test 11 (Setup): Create directory for error test");
-        await this._runCommand("echo 'target file' > err_target_file.txt", "MV Test 11 (Setup): Create target file");
-        await this._runCommand("mv err_dir err_target_file.txt", "MV Test 11: Attempt move directory onto existing file (expect error: directory to file)");
-        await this._runCommand("rm -r err_dir", "MV Test 11 (Cleanup): Remove error test directory");
-        await this._runCommand("rm err_target_file.txt", "MV Test 11 (Cleanup): Remove error target file");
-
-        // Test 12: Attempt to move multiple sources to a file destination
-        await this._runCommand("echo 'multi err 1' > multi_err1.txt", "MV Test 12 (Setup): Create file 1");
-        await this._runCommand("echo 'multi err 2' > multi_err2.txt", "MV Test 12 (Setup): Create file 2");
-        await this._runCommand("echo 'target' > target_file.txt", "MV Test 12 (Setup): Create target file");
-        await this._runCommand("mv multi_err1.txt multi_err2.txt target_file.txt", "MV Test 12: Attempt move multiple sources to a file (expect error)");
-        await this._runCommand("rm multi_err1.txt multi_err2.txt target_file.txt", "MV Test 12 (Cleanup): Remove test files");
-
-        // Test 13: Attempt to move multiple sources to a non-existent destination path
-        // Recreate sources from Test 12
-        await this._runCommand("echo 'multi err 1' > multi_err1.txt", "MV Test 13 (Setup): Create file 1");
-        await this._runCommand("echo 'multi err 2' > multi_err2.txt", "MV Test 13 (Setup): Create file 2");
-        await this._runCommand("mv multi_err1.txt multi_err2.txt non_existent_dest", "MV Test 13: Attempt move multiple sources to non-existent destination (expect error)");
-        await this._runCommand("rm multi_err1.txt multi_err2.txt", "MV Test 13 (Cleanup): Remove test files");
-
+        // Test 8: Attempt to move multiple sources to a file destination
+        // Need a file at the top level first. Copy one back temporarily.
+        await this._runCommand(
+            "cp existing_dest_dir/file_to_move.txt temp_target_file.txt",
+            "MV Test 8 (Setup): Create a temporary file target"
+        );
+        await this._runCommand(
+            "mv renamed_dir another_file.jpg temp_target_file.txt",
+            "MV Test 8: Attempt move multiple items onto a file target (expect error)"
+        );
+        await this._runCommand(
+            "rm temp_target_file.txt",
+            "MV Test 8 (Cleanup): Remove temp target"
+        );
 
         // --- Cleanup ---
         console.log("\n--- MV Cleanup ---");
@@ -401,44 +658,85 @@ export class TestSuite {
     /**
      * @brief Tests the 'rm' (remove) command.
      */
-     async testRm() {
+    async testRm() {
         console.log("\n===== Testing RM =====");
         // Setup: Create files and directories for removal tests
-        await this._runCommand("mkdir rm_test_dir_empty rm_test_dir_nested", "RM Setup: Create directories for rm tests");
-        await this._runCommand("echo 'file 1 content' > rm_test_file1.txt", "RM Setup: Create file 1 'rm_test_file1.txt'");
-        await this._runCommand("echo 'file 2 content' > rm_test_file2.txt", "RM Setup: Create file 2 'rm_test_file2.txt'");
-        await this._runCommand("echo 'nested file content' > rm_test_dir_nested/nested.txt", "RM Setup: Create nested file");
-        await this._runCommand("ls -a", "RM Setup: List contents before rm tests (include hidden if applicable)");
+        await this._runCommand(
+            "mkdir rm_test_dir_empty rm_test_dir_nested",
+            "RM Setup: Create directories for rm tests"
+        );
+        await this._runCommand(
+            "echo 'file 1 content' > rm_test_file1.txt",
+            "RM Setup: Create file 1 'rm_test_file1.txt'"
+        );
+        await this._runCommand(
+            "echo 'file 2 content' > rm_test_file2.txt",
+            "RM Setup: Create file 2 'rm_test_file2.txt'"
+        );
+        await this._runCommand(
+            "echo 'nested file content' > rm_test_dir_nested/nested.txt",
+            "RM Setup: Create nested file"
+        );
+        await this._runCommand(
+            "ls -a",
+            "RM Setup: List contents before rm tests (include hidden if applicable)"
+        );
         await this._runCommand("ls rm_test_dir_nested", "RM Setup: List nested directory contents");
 
         // Test 1: Remove a single existing file
-        await this._runCommand("rm rm_test_file1.txt", "RM Test 1: Remove single file 'rm_test_file1.txt'");
+        await this._runCommand(
+            "rm rm_test_file1.txt",
+            "RM Test 1: Remove single file 'rm_test_file1.txt'"
+        );
         await this._runCommand("ls", "RM Test 1: Verify file 1 removed");
 
         // Test 2: Attempt to remove a non-existent file (expect error)
-        await this._runCommand("rm rm_test_file_nonexistent.txt", "RM Test 2: Attempt remove non-existent file (expect error)");
+        await this._runCommand(
+            "rm rm_test_file_nonexistent.txt",
+            "RM Test 2: Attempt remove non-existent file (expect error)"
+        );
 
         // Test 3: Attempt to remove an empty directory without '-r' flag (might succeed or fail depending on implementation)
-        await this._runCommand("rm rm_test_dir_empty", "RM Test 3: Attempt remove empty directory 'rm_test_dir_empty' without -r");
-        await this._runCommand("ls", "RM Test 3: Verify empty directory removal (if supported by basic rm)");
+        await this._runCommand(
+            "rm rm_test_dir_empty",
+            "RM Test 3: Attempt remove empty directory 'rm_test_dir_empty' without -r"
+        );
+        await this._runCommand(
+            "ls",
+            "RM Test 3: Verify empty directory removal (if supported by basic rm)"
+        );
         // If rm doesn't handle empty dirs, use rm -r for cleanup:
         // await this._runCommand("rm -r rm_test_dir_empty", "RM Cleanup: Ensure empty dir is removed");
 
-
         // Test 4: Attempt to remove a non-empty directory without '-r' flag (expect error)
-        await this._runCommand("rm rm_test_dir_nested", "RM Test 4: Attempt remove non-empty directory 'rm_test_dir_nested' without -r (expect error)");
+        await this._runCommand(
+            "rm rm_test_dir_nested",
+            "RM Test 4: Attempt remove non-empty directory 'rm_test_dir_nested' without -r (expect error)"
+        );
 
         // Test 5: Remove a non-empty directory using the '-r' flag
-        await this._runCommand("rm -r rm_test_dir_nested", "RM Test 5: Remove non-empty directory 'rm_test_dir_nested' with -r");
+        await this._runCommand(
+            "rm -r rm_test_dir_nested",
+            "RM Test 5: Remove non-empty directory 'rm_test_dir_nested' with -r"
+        );
         await this._runCommand("ls", "RM Test 5: Verify nested directory removed");
 
         // Test 6: Remove multiple files at once
-        await this._runCommand("touch rm_multi1.txt rm_multi2.txt", "RM Test 6 (Setup): Create multiple files for removal");
-        await this._runCommand("rm rm_multi1.txt rm_multi2.txt", "RM Test 6: Remove multiple files 'rm_multi1.txt' 'rm_multi2.txt'");
+        await this._runCommand(
+            "touch rm_multi1.txt rm_multi2.txt",
+            "RM Test 6 (Setup): Create multiple files for removal"
+        );
+        await this._runCommand(
+            "rm rm_multi1.txt rm_multi2.txt",
+            "RM Test 6: Remove multiple files 'rm_multi1.txt' 'rm_multi2.txt'"
+        );
         await this._runCommand("ls", "RM Test 6: Verify multiple files removed");
 
         // Final Cleanup: Ensure the second test file is removed
-        await this._runCommand("rm rm_test_file2.txt", "RM Cleanup: Remove remaining test file 'rm_test_file2.txt'");
+        await this._runCommand(
+            "rm rm_test_file2.txt",
+            "RM Cleanup: Remove remaining test file 'rm_test_file2.txt'"
+        );
         await this._runCommand("ls", "RM Cleanup: Verify final state");
         console.log("===== RM Testing Finished =====");
     }
@@ -449,18 +747,139 @@ export class TestSuite {
     async testTree() {
         console.log("\n===== Testing TREE =====");
         // Setup: Create a small directory structure
-        await this._runCommand("mkdir tree_test && mkdir tree_test/subdir1 && mkdir tree_test/subdir2", "TREE Setup: Create directory structure");
+        await this._runCommand(
+            "mkdir tree_test && mkdir tree_test/subdir1 && mkdir tree_test/subdir2",
+            "TREE Setup: Create directory structure"
+        );
         await this._runCommand("echo 'file A' > tree_test/fileA.txt", "TREE Setup: Create file A");
-        await this._runCommand("echo 'file B' > tree_test/subdir1/fileB.txt", "TREE Setup: Create file B in subdir1");
+        await this._runCommand(
+            "echo 'file B' > tree_test/subdir1/fileB.txt",
+            "TREE Setup: Create file B in subdir1"
+        );
 
         // Test 1: Display the filesystem tree starting from the current directory
-        await this._runCommand("tree tree_test", "TREE Test 1: Display tree structure of 'tree_test'");
+        await this._runCommand(
+            "tree tree_test",
+            "TREE Test 1: Display tree structure of 'tree_test'"
+        );
         // Optional: Test from root or another specific path if needed
         // await this._runCommand("tree /", "TREE Test 2: Display tree from root (can be large)");
 
         // Cleanup: Remove the test structure
         await this._runCommand("rm -r tree_test", "TREE Cleanup: Remove test structure");
         console.log("===== TREE Testing Finished =====");
+    }
+
+    /**
+     * @brief Tests the 'touch' command (without pre-cleanup or redirection).
+     */
+    async testTouch() {
+        console.log("\n===== Testing TOUCH =====");
+
+        // --- Setup ---
+        // Assume we start in the home directory or reset if needed
+        await this._runCommand("cd ~", "TOUCH Setup: Ensure home directory");
+
+        // Create a dedicated directory for touch tests
+        await this._runCommand(
+            "mkdir touch_test_area",
+            "TOUCH Setup: Create main test directory 'touch_test_area'"
+        );
+        await this._runCommand(
+            "cd touch_test_area",
+            "TOUCH Setup: Enter test area 'touch_test_area'"
+        );
+        await this._runCommand("pwd", "TOUCH Setup: Verify current directory is touch_test_area");
+
+        // Create pre-existing items using touch/mkdir for update/interaction tests
+        await this._runCommand(
+            "touch existing_file.txt",
+            "TOUCH Setup: Create pre-existing file 'existing_file.txt' using touch"
+        );
+        await this._runCommand(
+            "mkdir existing_dir",
+            "TOUCH Setup: Create pre-existing directory 'existing_dir'"
+        );
+        await this._runCommand("ls -a", "TOUCH Setup: Initial listing of touch_test_area");
+
+        // --- Test Cases ---
+
+        // Test 1: Create a single new file
+        await this._runCommand(
+            "touch new_single_file.txt",
+            "TOUCH Test 1: Create single new file 'new_single_file.txt'"
+        );
+        await this._runCommand("ls", "TOUCH Test 1: Verify 'new_single_file.txt' exists");
+
+        // Test 2: Create multiple new files at once (with and without extensions)
+        await this._runCommand(
+            "touch multi_file1.log multi_file2 multi_file3.js",
+            "TOUCH Test 2: Create multiple files ('multi_file1.log', 'multi_file2', 'multi_file3.js')"
+        );
+        await this._runCommand("ls", "TOUCH Test 2: Verify multiple files exist");
+
+        // Test 3: Create a file inside an existing subdirectory
+        await this._runCommand(
+            "touch existing_dir/nested_new_file.dat",
+            "TOUCH Test 3: Create file 'nested_new_file.dat' inside 'existing_dir'"
+        );
+        await this._runCommand(
+            "ls existing_dir",
+            "TOUCH Test 3: Verify 'nested_new_file.dat' exists in 'existing_dir'"
+        );
+
+        // Test 4: Touch an existing file (created during setup)
+        await this._runCommand(
+            "touch existing_file.txt",
+            "TOUCH Test 4: Touch existing file 'existing_file.txt'"
+        );
+        await this._runCommand(
+            "ls",
+            "TOUCH Test 4: Verify 'existing_file.txt' still exists after touch"
+        );
+
+        // Test 5: Touch an existing directory (created during setup)
+        await this._runCommand(
+            "touch existing_dir",
+            "TOUCH Test 5: Touch existing directory 'existing_dir'"
+        );
+        await this._runCommand(
+            "ls",
+            "TOUCH Test 5: Verify 'existing_dir' still exists after touch"
+        );
+
+        // --- Error Conditions ---
+
+        // Test 6: Attempt to touch with no arguments
+        await this._runCommand(
+            "touch",
+            "TOUCH Test 6: Attempt touch with no arguments (expect 'too few arguments' error)"
+        );
+
+        // Test 7: Attempt to touch a file where the parent directory does not exist
+        await this._runCommand(
+            "touch non_existent_dir/some_file.txt",
+            "TOUCH Test 7: Attempt touch in non-existent directory (expect path resolution error)"
+        );
+
+        // Test 8: Attempt to touch a file with an invalid name (assuming '/' is invalid)
+        // Note: This depends on your `FSUtil.isValidFileName` implementation.
+        await this._runCommand(
+            "touch 'invalid/name.txt'",
+            "TOUCH Test 8: Attempt touch with invalid character in name (expect 'invalid file name' error)"
+        );
+
+        // --- Cleanup ---
+        // This cleanup at the end removes everything created during this test run.
+        console.log("\n--- TOUCH Cleanup ---");
+        await this._runCommand("cd ..", "TOUCH Cleanup: Go back to home directory"); // Exit touch_test_area
+        await this._runCommand(
+            "rm -r touch_test_area",
+            "TOUCH Cleanup: Remove the main test directory"
+        );
+        await this._runCommand("ls", "TOUCH Cleanup: Final listing of home directory");
+
+        console.log("===== TOUCH Testing Finished =====");
     }
 
     /**
@@ -490,12 +909,12 @@ export class TestSuite {
         // Execute tests sequentially, awaiting each completion
         await this.testPwd();
         await this.testLs();
-        await this.testCd();    // Test cd early as it's fundamental for navigation
+        await this.testCd(); // Test cd early as it's fundamental for navigation
         await this.testMkdir(); // Test mkdir before commands that need directories
-        await this.testEcho();  // Test echo before commands that use it for setup (cat, cp)
+        await this.testEcho(); // Test echo before commands that use it for setup (cat, cp)
         await this.testCat();
         await this.testCp();
-        await this.testRm();    // Test rm after commands that create files/dirs
+        await this.testRm(); // Test rm after commands that create files/dirs
         await this.testTree();
         await this.testTodo();
 

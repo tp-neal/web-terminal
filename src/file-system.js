@@ -9,40 +9,40 @@
           and folders.
 ==================================================================================================*/
 
-import { OutputLine } from './output-line.js';
-import { FSUtil } from './fs-util.js';
+import { OutputLine } from "./output-line.js";
+import { FSUtil } from "./fs-util.js";
 import { ERROR_MESSAGES } from "./config.js";
 
 export const RESOLUTION = {
-    FOUND: 'FOUND',
-    NOT_FOUND: 'NOT_FOUND', // Target or intermediate path doesn't exist
-    PARENT_FOUND_TARGET_MISSING: 'PARENT_FOUND_TARGET_MISSING', // Parent exists, final component doesn't
-    TARGET_FOUND_TYPE_MISMATCH: 'TARGET_FOUND_TYPE_MISMATCH', // Target exists, but type doesn't match
-    NOT_A_DIRECTORY: 'NOT_A_DIRECTORY', // Intermediate path component is not a directory
-    INVALID_PATH: 'INVALID_PATH', // Path string itself is malformed
-    PERMISSION_DENIED: 'PERMISSION_DENIED', // Future use for permissions
-    ERROR: 'ERROR' // Generic error
+    FOUND: "FOUND",
+    NOT_FOUND: "NOT_FOUND", // Target or intermediate path doesn't exist
+    PARENT_FOUND_TARGET_MISSING: "PARENT_FOUND_TARGET_MISSING", // Parent exists, final component doesn't
+    TARGET_FOUND_TYPE_MISMATCH: "TARGET_FOUND_TYPE_MISMATCH", // Target exists, but type doesn't match
+    NOT_A_DIRECTORY: "NOT_A_DIRECTORY", // Intermediate path component is not a directory
+    INVALID_PATH: "INVALID_PATH", // Path string itself is malformed
+    PERMISSION_DENIED: "PERMISSION_DENIED", // Future use for permissions
+    ERROR: "ERROR", // Generic error
 };
 
 /*  File/directory Class Definition
-***************************************************************************************************/
+ ***************************************************************************************************/
 /**
  * @class FSNode
  * @brief Represents a node in the filesystem (either a file or directory)
  */
 export class FSNode {
-    name;           // Name of the file/directory
-    type;           // Type of the node (e.g., 'dir', 'txt', 'jpg')
+    name; // Name of the file/directory
+    type; // Type of the node (e.g., 'dir', 'txt', 'jpg')
 
-    isDirectory;    // True if the node is a directory
-    isHidden;       // True if the file/directory is hidden (auto set in this.setName())
+    isDirectory; // True if the node is a directory
+    isHidden; // True if the file/directory is hidden (auto set in this.setName())
 
-    parent;         // Parent directory of the file/directory
-    cihldren;       // Children files/dierectories of this node
+    parent; // Parent directory of the file/directory
+    cihldren; // Children files/dierectories of this node
 
-    content;        // Text content of the file (if applicable)
+    content; // Text content of the file (if applicable)
 
-    metadata;       // Metadata including creation time, modification time, and size
+    metadata; // Metadata including creation time, modification time, and size
 
     /**
      * @brief Constructor - creates a new file system node
@@ -55,34 +55,35 @@ export class FSNode {
             return;
         }
 
-        this.name = name;
-        this.isHidden = name.startsWith('.');
-        this.type = (type) ? type : 'txt' // default to text
-        
-        this.isDirectory = (type === 'dir');
+        const { name: trimmedName } = FSUtil.parseNameAndExtension(name);
+
+        this.name = trimmedName;
+        this.isHidden = name.startsWith(".");
+        this.type = type ? type : "txt"; // default to text
+
+        this.isDirectory = type === "dir";
 
         this.parent = null;
-        this.children = (!this.isDirectory) ? null : new Map();
+        this.children = !this.isDirectory ? null : new Map();
 
-        this.content = (!this.isDirectory && content) ? content : null;
+        this.content = !this.isDirectory && content ? content : null;
 
         this.metadata = {
             created: new Date(), // Use Date object
             modified: new Date(), // Use Date object
-            size: 0
+            size: 0,
         };
     }
-    
 
     /*  Name Management
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Gets the full name of the node including extension for files.
      * Used as the key in the parent's children map.
      * @return {string} Full name (e.g., "file.txt" or "directory_name").
      */
     getFullName() {
-        return (this.isDirectory) ? this.name : this.name + '.' + this.type;
+        return this.isDirectory ? this.name : this.name + "." + this.type;
     }
 
     /**
@@ -98,45 +99,43 @@ export class FSNode {
      * @param {string} name - New name for the node (without extension).
      */
     setName(name) {
-        const oldName = this.name;
-
+        if (!name) {
+            console.error(
+                `FSNode.setName: Received invalid name: '${name}' for node originally named '${this.name}'`
+            );
+            return; // Prevent setting an invalid name
+        }
         // Update the name of the node
         this.name = name;
-        this.isHidden = this.name.startsWith('.');
+        this.isHidden = this.name.startsWith(".");
         this.updateModifiedTime();
-
-        // Update the name of the node in the parent directory.
-        if (this.parent) {
-            this.parent.removeChild(oldName);
-            this.parent.addChild(this);
-        }
     }
 
     /*  Path Management
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Gets the full path of this node from root
      * @return {string} Full path starting from root
      */
     getFilePath() {
         let node = this;
-        let path = '';
+        let path = "";
         while (node) {
-            path = node.name + ((path && node.name !== '/') ? '/' : '') + path; // build path correctly
+            path = node.name + (path && node.name !== "/" ? "/" : "") + path; // build path correctly
 
-             // Stop at root - check parent, not name
-            if (node.parent === null && node.name === '/') break; // Reached root
+            // Stop at root - check parent, not name
+            if (node.parent === null && node.name === "/") break; // Reached root
             node = node.parent;
         }
-         // Ensure leading slash if it wasn't the root itself
-         if (path !== '/' && !path.startsWith('/')) {
-             path = '/' + path;
-         }
+        // Ensure leading slash if it wasn't the root itself
+        if (path !== "/" && !path.startsWith("/")) {
+            path = "/" + path;
+        }
         return path;
     }
 
     /*  Child Management
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Checks if directory has a child with specified full name and optional type.
      * @param {string} fullName - Full name of child (name.ext for files, name for dirs).
@@ -171,10 +170,10 @@ export class FSNode {
             return null;
         }
 
-         // Optional type check
-         if (type && child.type !== type) {
+        // Optional type check
+        if (type && child.type !== type) {
             return null;
-         }
+        }
 
         return child;
     }
@@ -197,7 +196,7 @@ export class FSNode {
             console.error(`directory '${this.getFullName()}' already has child '${childFullName}'`);
             return false;
         }
-        
+
         // Set childs parent directory to this, and add to children map
         child.parent = this;
         this.children.set(childFullName, child); // Use full name as key
@@ -233,7 +232,7 @@ export class FSNode {
     }
 
     /*  Content Management
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Gets the content of the file. Only applicable for files, not directories.
      * @returns {string} Contents of the file, or null if not a file/not set.
@@ -264,7 +263,7 @@ export class FSNode {
     }
 
     /*  Metadata Management
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Update the date/time of the last modified attribute of file/directory.
      */
@@ -274,7 +273,7 @@ export class FSNode {
 }
 
 /*  Filesystem Class Definition
-***************************************************************************************************/
+ ***************************************************************************************************/
 /**
  * @class Filesystem
  * @brief Manages the virtual file system structure and operations
@@ -285,14 +284,14 @@ export class Filesystem {
      * @param {string} initialDirectory - Optional starting directory (unused in current implementation)
      */
     constructor() {
-        const {root, home, cwd} = this.createTestFilesystem();
+        const { root, home, cwd } = this.createTestFilesystem();
         this.root = root;
         this.home = home;
         this.cwd = cwd;
     }
 
     /*  Path Traversal
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Resolves a path to find a target node and its parent without changing cwd.
      * @param {string} path - The path string to resolve (relative or absolute).
@@ -310,89 +309,77 @@ export class Filesystem {
     resolvePath(path, options = {}) {
         // --- 0. FORMAT VARIABLES ---
         // Destructure and set option defaults
-        const {
-            createIntermediary = false,
-            targetMustHaveType = null
-        } = options;
+        const { createIntermediary = false, targetMustHaveType = null } = options;
 
         // Create array for error messages
         const errors = [];
 
-
         // --- 1. Handle empty/root paths ---
         // Root Directory
-        if (path === '/') {
+        if (path === "/") {
             return {
                 status: RESOLUTION.FOUND,
                 targetNode: this.root,
                 parentNode: null,
-                targetName: '/',
-                errors
-            }
+                targetName: "/",
+                errors,
+            };
         }
 
-        // Home Directory
-        if (path === '' || path === '~') {
-            return {
-                status: RESOLUTION.FOUND,
-                targetNode: this.home,
-                parentNode: this.home.parent,
-                targetName: this.home.name,
-                errors
-            }
-        }
+        // Substitute path of home directory for simplicity
+        path = path.substring(path.indexOf("~")); // Since ~ is absolute, we ignore the prefix
+        path = path.replace("~", this.home.getFilePath());
 
         // --- 2. Tokenize Path ---
         const pathParts = FSUtil.tokenizePath(path);
         // Check if tokenization returned null result
-        if (!pathParts) {
-            errors.push({ type: 'error', content: 'Path tokenization returned null result' });
+        if (pathParts === null) {
+            errors.push({ type: "error", content: "Path tokenization returned null result" });
             return {
                 status: RESOLUTION.INVALID_PATH,
                 targetNode: null,
                 parentNode: null,
                 targetName: null,
-                errors
-            }
+                errors,
+            };
         }
 
         // Check if tokenized path is empty
         if (pathParts.length === 0) {
-            errors.push({ type: 'error', content: 'Path tokenization returned empty result' });
+            errors.push({ type: "error", content: "Path tokenization returned empty result" });
             return {
                 status: RESOLUTION.INVALID_PATH,
                 targetNode: null,
                 parentNode: null,
                 targetName: null,
-                errors
-            }
+                errors,
+            };
         }
 
         // --- 3. Determine Start Node ---
         const firstChar = path[0];
         let cursor;
-        if (firstChar === '/') {
+        if (firstChar === "/") {
             cursor = this.root; // the '/' was already filtered in tokenizePath
-        } else if (firstChar === '~') {
+        } else if (firstChar === "~") {
             cursor = this.home;
             pathParts.shift(); // remove '~' from the path parts
         } else {
             cursor = this.cwd;
         }
 
-
         // --- 4. Iterate Through Tokens Until Last ---
         let n = pathParts.length;
-        for (let i = 0; i < n-1; i++) {
+        for (let i = 0; i < n - 1; i++) {
             const part = pathParts[i];
 
             // If part is '.', stay in the same directory
-            if (part === '.') {
+            if (part === ".") {
                 continue;
             }
 
             // If part is '..', move up to parent directory if it exists
-            if (part === '..') {
+            if (part === "..") {
                 if (cursor.parent) {
                     cursor = cursor.parent;
                 }
@@ -405,43 +392,71 @@ export class Filesystem {
 
                 // Check if the child is a directory, if not, we cannot scope into it, return error
                 if (!child.isDirectory) {
-                    errors.push({ type: 'error', content: ERROR_MESSAGES.NOT_A_DIRECTORY(part) });
+                    errors.push({ type: "error", content: ERROR_MESSAGES.NOT_A_DIRECTORY(part) });
                     return {
                         status: RESOLUTION.NOT_A_DIRECTORY,
                         targetNode: null,
                         parentNode: cursor,
                         targetName: part,
-                        errors
-                    }
+                        errors,
+                    };
                 }
 
-            // If current director doesnt contain child, and createIntermediary is true, create the 
-            // new dierctory, and move the cursor to it
+                // If current director doesnt contain child, and createIntermediary is true, create the
+                // new dierctory, and move the cursor to it
             } else if (createIntermediary) {
-                const newDir = new FSNode(part, 'dir');
+                const newDir = new FSNode(part, "dir");
                 cursor.addChild(newDir);
 
-            // Return error if the cursor doesnt have the child, and createIntermediary is false
+                // Return error if the cursor doesnt have the child, and createIntermediary is false
             } else {
-                errors.push({ type: 'error', content: ERROR_MESSAGES.PATH_NOT_FOUND(part) });
+                errors.push({ type: "error", content: ERROR_MESSAGES.PATH_NOT_FOUND(part) });
                 return {
                     status: RESOLUTION.NOT_FOUND,
                     targetNode: null,
                     parentNode: cursor,
                     targetName: part,
-                    errors
-                }
+                    errors,
+                };
             }
 
             // Directory exists, move to it
             cursor = cursor.getChild(part);
         }
 
+        // Store the targetName so we can change it if the last part is a special case
+        let targetName = pathParts[n - 1];
+
+        // If part is '.', stay in the same directory
+        if (targetName === ".") {
+            targetName = cursor.name;
+        }
+
+        // If part is '..', move up to parent directory if it exists
+        if (targetName === "..") {
+            if (cursor.parent) {
+                cursor = cursor.parent;
+            }
+            targetName = cursor.name;
+        }
+
+        if (targetName === "/") {
+            return {
+                status: RESOLUTION.FOUND,
+                targetNode: this.root,
+                parentNode: null,
+                targetName: this.root.name,
+                errors,
+            };
+        }
+
         // --- 5. Check Last Token ---
-        const targetName = pathParts[n-1];
         const targetExists = cursor.hasChild(targetName);
         const targetMatchingTypeExists = cursor.hasChild(targetName, targetMustHaveType);
-        const targetNode = cursor.getChild(targetName, (targetMustHaveType) ? targetMustHaveType : null);
+        const targetNode = cursor.getChild(
+            targetName,
+            targetMustHaveType ? targetMustHaveType : null
+        );
         const parentNode = cursor;
         let status = null;
 
@@ -449,30 +464,30 @@ export class Filesystem {
         if (targetExists) {
             // If target doesnt match type, and type is specified, return error
             if (!targetMatchingTypeExists && targetMustHaveType) {
-                errors.push({ type: 'error', content: ERROR_MESSAGES.PATH_NOT_FOUND(targetName) });
+                errors.push({ type: "error", content: ERROR_MESSAGES.PATH_NOT_FOUND(targetName) });
                 return {
                     status: RESOLUTION.TARGET_FOUND_TYPE_MISMATCH,
                     targetNode,
                     parentNode,
                     targetName,
-                    errors
-                }
-            }   
+                    errors,
+                };
+            }
 
-        // Target doesn't exist, update status
+            // Target doesn't exist, update status
         } else {
             status = RESOLUTION.PARENT_FOUND_TARGET_MISSING;
-            errors.push({ type: 'error', content: ERROR_MESSAGES.PATH_NOT_FOUND(targetName) });
+            errors.push({ type: "error", content: ERROR_MESSAGES.PATH_NOT_FOUND(targetName) });
         }
 
         // --- 6. Return Result ---
-        return { 
+        return {
             // If status wasn't already previously set to PARENT_FOUND_TARGET_MISSING, set it to FOUND
-            status: (status) ? status : RESOLUTION.FOUND,
+            status: status ? status : RESOLUTION.FOUND,
             targetNode,
-            parentNode, 
-            targetName, 
-            errors 
+            parentNode,
+            targetName,
+            errors,
         };
     }
 
@@ -482,52 +497,46 @@ export class Filesystem {
      * @return {Object} Status object with success flag and info message
      */
     navigateTo(path) {
-        
         // Root directory navigation
-        if (path === '/') {
+        if (path === "/") {
             this.cwd = this.root;
-            return { success: true }
+            return { success: true };
         }
 
-        // Home directory navigation
-        if (path === '' || path === '~') {
-            this.cwd = (this.home) ? this.home : this.root;
-            return { success: true }
-        }
-        
+        // Substitute path of home directory for simplicity
+        path = path.replace("~", this.home.getFilePath());
+
         // Tokenize filepath
-        const isAbsolute = path[0] === '/';
-        const folders = path.split('/').filter(item => item !== '');
+        const isAbsolute = path[0] === "/";
+        const folders = path.split("/").filter((item) => item !== "");
         let cursor = isAbsolute ? this.root : this.cwd;
-        
+
         // Iterate through directories
         for (const directory of folders) {
-            if (directory === '.') {
+            if (directory === ".") {
                 continue;
-            } else if (directory === '..') {
-                if (cursor.parent)
-                    cursor = cursor.parent;
+            } else if (directory === "..") {
+                if (cursor.parent) cursor = cursor.parent;
             } else {
-                if (!cursor.hasChild(directory, 'dir')) {
-                    return { 
+                if (!cursor.hasChild(directory, "dir")) {
+                    return {
                         success: false,
-                        errorInfo: ERROR_MESSAGES.PATH_NOT_FOUND(directory)
-                     }
+                        errorInfo: ERROR_MESSAGES.PATH_NOT_FOUND(directory),
+                    };
                 }
                 cursor = cursor.getChild(directory);
             }
-            
         }
-        
         // Update current working directory
         this.cwd = cursor;
-        return { 
-            success: true 
-        }
+
+        return {
+            success: true,
+        };
     }
 
     /*  Node State Modification
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Deletes a node from the filesystem.
      * @param {FSNode} node - Node to delete.
@@ -536,21 +545,19 @@ export class Filesystem {
      * @return {boolean} True if deletion was successful, false otherwise.
      */
     deleteNode(node, { recursive } = {}) {
-        if (!node) 
-            return false;
+        if (!node) return false;
 
         // If recuresive deletion, check if node is directory and has children
         if (recursive) {
             if (node.isDirectory && node.children) {
                 for (const child of node.children) {
                     // Delete all children of node
-                    this.deleteNode(child, { recursive: true});
+                    this.deleteNode(child, { recursive: true });
                 }
             }
         }
 
-        if (node.parent)
-            node.parent.removeChild(node.getFullName());
+        if (node.parent) node.parent.removeChild(node.getFullName());
 
         return true;
     }
@@ -565,8 +572,8 @@ export class Filesystem {
         const copy = new FSNode(newName || node.name, node.type, node.content);
         copy.parent = node.parent;
         if (node.isDirectory && recursive) {
-            for (const child of node.children) {
-                copy.addChild(this.copyNode(child));
+            for (const [childName, childNode] of node.children) {
+                copy.addChild(this.copyNode(childNode));
             }
         }
 
@@ -574,7 +581,7 @@ export class Filesystem {
     }
 
     /*  Pathname Malipulation
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Converts home directory path to tilde notation
      * @param {string} path - Full path to convert
@@ -589,67 +596,66 @@ export class Filesystem {
     }
 
     /*  Printing
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     getFSTree(node, currentPrefix, isLast, lines) {
-        let outputString = '';
+        let outputString = "";
         const outputLine = new OutputLine();
-    
+
         // 1. Determine connector for node
-        const connector = isLast ? '└── ' : '├── ';
-    
+        const connector = isLast ? "└── " : "├── ";
+
         // 2. Construct line for this node
         let prefixSpan = null;
-        if (node !== this.root) {
+        if (node !== this.cwd) {
             outputString += currentPrefix + connector;
-            prefixSpan = { type: 'general', content: outputString };
-
+            prefixSpan = { type: "general", content: outputString };
         }
-        outputString += node.getFullName() + '\n';
-        const nodeNameSpan = { type: (node.isDirectory) ? 'directory' : 'file', content: node.getFullName() };
-    
+        outputString += node.getFullName() + "\n";
+        const nodeNameSpan = {
+            type: node.isDirectory ? "directory" : "file",
+            content: node.getFullName(),
+        };
+
         // Add line to lines for output
-        if (prefixSpan)
-            outputLine.addSpan(prefixSpan.type, prefixSpan.content);
+        if (prefixSpan) outputLine.addSpan(prefixSpan.type, prefixSpan.content);
         outputLine.addSpan(nodeNameSpan.type, nodeNameSpan.content);
         lines.push(outputLine);
 
         // 3. If it's a directory, process children
         if (node.isDirectory && node.children) {
-    
             // 4. Calculate the prefix for the children
-            let prefixForChildren = '';
-            if (node !== this.root)
-                prefixForChildren = currentPrefix + (isLast ? '    ' : '│   ');
-    
+            let prefixForChildren = "";
+            if (node !== this.cwd) prefixForChildren = currentPrefix + (isLast ? "    " : "│   ");
+
             let count = 0;
             const numChildren = node.children.size; // Get size once
-    
+
             // Iterate over the Map's [key, value] pairs
-            for (const [childName, childNode] of node.children) { 
-                const childIsLast = (count === numChildren - 1);
-    
+            for (const [childName, childNode] of node.children) {
+                const childIsLast = count === numChildren - 1;
+
                 // Recursive call
                 this.getFSTree(childNode, prefixForChildren, childIsLast, lines);
-    
+
                 count++;
             }
         }
     }
 
     /*  Testing
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
- * @brief Creates a test filesystem with predefined structure and dummy content
- * @return {Object} Object containing root, home, and current working directory nodes
- */
+     * @brief Creates a test filesystem with predefined structure and dummy content
+     * @return {Object} Object containing root, home, and current working directory nodes
+     */
     createTestFilesystem() {
         // Root level directories
-        let root = new FSNode('/', 'dir');
-        let home = new FSNode('home', 'dir');
-        let usr = new FSNode('usr', 'dir');
-        let etc = new FSNode('etc', 'dir');
-        let vars = new FSNode('var', 'dir');
-        let tmp = new FSNode('tmp', 'dir');
+        let root = new FSNode("/", "dir");
+        let home = new FSNode("home", "dir");
+        let usr = new FSNode("usr", "dir");
+        let etc = new FSNode("etc", "dir");
+        let vars = new FSNode("var", "dir");
+        let tmp = new FSNode("tmp", "dir");
 
         // Add root level directories
         root.addChild(home);
@@ -659,109 +665,117 @@ export class Filesystem {
         root.addChild(tmp);
 
         // Home directory structure
-        let userDir = new FSNode('user', 'dir');
+        let userDir = new FSNode("user", "dir");
         home.addChild(userDir);
 
         // User's personal directories
-        let documents = new FSNode('Documents', 'dir');
-        let pictures = new FSNode('Pictures', 'dir');
-        let downloads = new FSNode('Downloads', 'dir');
-        let desktop = new FSNode('Desktop', 'dir');
+        let documents = new FSNode("Documents", "dir");
+        let pictures = new FSNode("Pictures", "dir");
+        let downloads = new FSNode("Downloads", "dir");
+        let desktop = new FSNode("Desktop", "dir");
         userDir.addChild(documents);
         userDir.addChild(pictures);
         userDir.addChild(downloads);
         userDir.addChild(desktop);
 
         // Some hidden configuration files with content
-        let bashrcContent = `# .bashrc\n\n# Source global definitions\nif [ -f /etc/bashrc ]; `+ 
-        `then\n\t. /etc/bashrc\nfi\n\n# User specific aliases and functions\nalias ll='ls -alF'\n`+ 
-        `alias la='ls -A'\nalias l='ls -CF'\n`;
-        let bashrc = new FSNode('.bashrc', 'txt', bashrcContent);
-        let gitconfigContent = `[user]\n\tname = Tyler Neal\n\temail = example@example.com\n`+ 
-        `[alias]\n\tst = status\n\tco = checkout\n\tbr = branch\n`;
-        let gitconfig = new FSNode('.gitconfig', 'txt', gitconfigContent);
+        let bashrcContent =
+            `# .bashrc\n\n# Source global definitions\nif [ -f /etc/bashrc ]; ` +
+            `then\n\t. /etc/bashrc\nfi\n\n# User specific aliases and functions\nalias ll='ls -alF'\n` +
+            `alias la='ls -A'\nalias l='ls -CF'\n`;
+        let bashrc = new FSNode(".bashrc", "txt", bashrcContent);
+        let gitconfigContent =
+            `[user]\n\tname = Tyler Neal\n\temail = example@example.com\n` +
+            `[alias]\n\tst = status\n\tco = checkout\n\tbr = branch\n`;
+        let gitconfig = new FSNode(".gitconfig", "txt", gitconfigContent);
         userDir.addChild(bashrc);
         userDir.addChild(gitconfig);
 
         // Document files with content
-        let resumeContent = "Objective: To obtain a challenging position...\n\nExperience:\n...\n"+ 
-                            "\nSkills:\n...";
-        let resume = new FSNode('resume', 'txt', resumeContent);
-        let notesContent = "Meeting Notes - April 8, 2025\n- Discuss project timeline\n- Assign "+
-                           "action items\n- Next meeting scheduled for Friday";
-        let notes = new FSNode('notes', 'txt', notesContent);
+        let resumeContent =
+            "Objective: To obtain a challenging position...\n\nExperience:\n...\n" +
+            "\nSkills:\n...";
+        let resume = new FSNode("resume", "txt", resumeContent);
+        let notesContent =
+            "Meeting Notes - April 8, 2025\n- Discuss project timeline\n- Assign " +
+            "action items\n- Next meeting scheduled for Friday";
+        let notes = new FSNode("notes", "txt", notesContent);
         let projectIdeasContent = "1. Web Terminal\n2. Task Manager\n3. Recipe App";
-        let projectIdeas = new FSNode('project_ideas', 'txt', projectIdeasContent);
+        let projectIdeas = new FSNode("project_ideas", "txt", projectIdeasContent);
 
         documents.addChild(resume);
         documents.addChild(notes);
         documents.addChild(projectIdeas); // Renamed 'project' to 'project_ideas' for clarity
 
         // Project directory
-        let projectDir = new FSNode('project_files', 'dir');
+        let projectDir = new FSNode("project_files", "dir");
         documents.addChild(projectDir);
-        let readmeContent = "# Project Files\n\nThis directory contains files related to the "+
-                            "project.\n- README.md: This file\n- config.json: Configuration "+
-                            "settings";
-        let readme = new FSNode('README', 'md', readmeContent); // Changed type to 'md'
-        let configContent = `{ \n  \"setting1\": \"value1\",\n  \"enabled\": true,\n  \"port\": `+
-                            `8080\n}`;
-        let config = new FSNode('config', 'json', configContent); // Changed type to 'json'
+        let readmeContent =
+            "# Project Files\n\nThis directory contains files related to the " +
+            "project.\n- README.md: This file\n- config.json: Configuration " +
+            "settings";
+        let readme = new FSNode("README", "md", readmeContent); // Changed type to 'md'
+        let configContent =
+            `{ \n  \"setting1\": \"value1\",\n  \"enabled\": true,\n  \"port\": ` + `8080\n}`;
+        let config = new FSNode("config", "json", configContent); // Changed type to 'json'
         projectDir.addChild(readme);
         projectDir.addChild(config);
 
         // Pictures with image files (content usually binary, so adding descriptive text)
-        let picturesDir = new FSNode('Photos', 'dir'); // Changed name for clarity
+        let picturesDir = new FSNode("Photos", "dir"); // Changed name for clarity
         pictures.addChild(picturesDir);
-        let vacation = new FSNode('vacation', 'dir');
+        let vacation = new FSNode("vacation", "dir");
         picturesDir.addChild(vacation);
-        let photo1 = new FSNode('beach', 'jpg', '[Simulated JPEG data for beach photo]');
-        let photo2 = new FSNode('mountains', 'jpg', '[Simulated JPEG data for mountain photo]');
-        let photo3 = new FSNode('sunset', 'png', '[Simulated PNG data for sunset photo]');
+        let photo1 = new FSNode("beach", "jpg", "[Simulated JPEG data for beach photo]");
+        let photo2 = new FSNode("mountains", "jpg", "[Simulated JPEG data for mountain photo]");
+        let photo3 = new FSNode("sunset", "png", "[Simulated PNG data for sunset photo]");
         vacation.addChild(photo1);
         vacation.addChild(photo2);
         vacation.addChild(photo3);
 
         // Screenshots directory
-        let screenshots = new FSNode('screenshots', 'dir');
+        let screenshots = new FSNode("screenshots", "dir");
         picturesDir.addChild(screenshots); // Added under the new 'Photos' dir
-        let screen1 = new FSNode('screenshot1', 'png', '[Simulated PNG data for screenshot 1]');
-        let screen2 = new FSNode('screenshot2', 'png', '[Simulated PNG data for screenshot 2]');
+        let screen1 = new FSNode("screenshot1", "png", "[Simulated PNG data for screenshot 1]");
+        let screen2 = new FSNode("screenshot2", "png", "[Simulated PNG data for screenshot 2]");
         screenshots.addChild(screen1);
         screenshots.addChild(screen2);
 
         // Downloads with mixed content
-        let installer = new FSNode('app_installer', 'exe', '[Simulated executable data]');
-        let wallpaper = new FSNode('wallpaper', 'jpg', '[Simulated JPEG data for wallpaper]');
+        let installer = new FSNode("app_installer", "exe", "[Simulated executable data]");
+        let wallpaper = new FSNode("wallpaper", "jpg", "[Simulated JPEG data for wallpaper]");
         downloads.addChild(installer);
         downloads.addChild(wallpaper);
 
         // Desktop items
         let shortcutInfo = "[InternetShortcut]\nURL=http://example.com/";
-        let shortcut = new FSNode('shortcut_to_example', 'url', shortcutInfo);
-        let presentation = new FSNode('presentation_draft', 'pptx', '[Simulated PowerPoint data]'); 
+        let shortcut = new FSNode("shortcut_to_example", "url", shortcutInfo);
+        let presentation = new FSNode("presentation_draft", "pptx", "[Simulated PowerPoint data]");
         desktop.addChild(shortcut);
         desktop.addChild(presentation);
 
         // System directories and files
-        let bin = new FSNode('bin', 'dir');
+        let bin = new FSNode("bin", "dir");
         usr.addChild(bin);
         let systemConfigContent = "# System Configuration\ndaemon_enabled=true\nlog_level=INFO";
-        let systemConfig = new FSNode('system', 'conf', systemConfigContent);
+        let systemConfig = new FSNode("system", "conf", systemConfigContent);
         etc.addChild(systemConfig);
-        let logs = new FSNode('logs', 'dir');
+        let logs = new FSNode("logs", "dir");
         vars.addChild(logs);
-        let appLog = new FSNode('app', 'log', "INFO: Application started.\nWARN: Cache cleared.\n"+
-                                              "ERROR: Connection refused.");
+        let appLog = new FSNode(
+            "app",
+            "log",
+            "INFO: Application started.\nWARN: Cache cleared.\n" + "ERROR: Connection refused."
+        );
         logs.addChild(appLog);
         let tempFileContent = "Temporary data generated at " + new Date().toISOString();
-        let tempFile = new FSNode('temp_file_123', 'tmp', tempFileContent);
+        let tempFile = new FSNode("temp_file_123", "tmp", tempFileContent);
         tmp.addChild(tempFile);
 
         return {
             root: root,
             home: userDir,
-            cwd: userDir
+            cwd: userDir,
         };
     }
 }
