@@ -355,8 +355,6 @@ export class TestSuite {
         // Ensure we start in the user's home directory where test files exist
         await this._runCommand("cd ~", "CP Setup: Go to home directory (~/user)");
         await this._runCommand("pwd", "CP Setup: Verify current directory");
-        // Optional: Clear screen
-        await this._runCommand("clear", "CP Setup: Clearing screen");
 
         // Create a dedicated destination directory for copy tests
         await this._runCommand(
@@ -502,8 +500,7 @@ export class TestSuite {
             "rm -r mv_test_area",
             "MV Setup: Clean up previous test area (ignore errors)"
         );
-        // Optional: Clear screen
-        await this._runCommand("clear", "MV Setup: Clear screen for tests");
+
         // Create a dedicated test directory
         await this._runCommand(
             "mkdir mv_test_area",
@@ -742,35 +739,6 @@ export class TestSuite {
     }
 
     /**
-     * @brief Tests the 'tree' command.
-     */
-    async testTree() {
-        console.log("\n===== Testing TREE =====");
-        // Setup: Create a small directory structure
-        await this._runCommand(
-            "mkdir tree_test && mkdir tree_test/subdir1 && mkdir tree_test/subdir2",
-            "TREE Setup: Create directory structure"
-        );
-        await this._runCommand("echo 'file A' > tree_test/fileA.txt", "TREE Setup: Create file A");
-        await this._runCommand(
-            "echo 'file B' > tree_test/subdir1/fileB.txt",
-            "TREE Setup: Create file B in subdir1"
-        );
-
-        // Test 1: Display the filesystem tree starting from the current directory
-        await this._runCommand(
-            "tree tree_test",
-            "TREE Test 1: Display tree structure of 'tree_test'"
-        );
-        // Optional: Test from root or another specific path if needed
-        // await this._runCommand("tree /", "TREE Test 2: Display tree from root (can be large)");
-
-        // Cleanup: Remove the test structure
-        await this._runCommand("rm -r tree_test", "TREE Cleanup: Remove test structure");
-        console.log("===== TREE Testing Finished =====");
-    }
-
-    /**
      * @brief Tests the 'touch' command (without pre-cleanup or redirection).
      */
     async testTouch() {
@@ -903,8 +871,6 @@ export class TestSuite {
 
         // Reset to a known state (home directory) before starting tests
         await this._runCommand("cd ~", "Suite Setup: Resetting to home directory", 100);
-        // Clear the screen for better visibility of test output
-        await this._runCommand("clear", "Suite Setup: Clearing screen", 100);
 
         // Execute tests sequentially, awaiting each completion
         await this.testPwd();

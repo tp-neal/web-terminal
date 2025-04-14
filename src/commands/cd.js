@@ -8,10 +8,9 @@
 * @brief: Contains implementation of the interpreter's cd command
 ==================================================================================================*/
 
-import { Command } from "../command.js";
-import { OutputLine } from "../output-line.js";
+import { Command } from "./command.js";
+import { OutputLine } from "../util/output-line.js";
 import { ERROR_MESSAGES } from "../config.js";
-import { ArgParser } from "../arg-parser.js";
 
 /*==================================================================================================
     Class Definition: [CdCommand]

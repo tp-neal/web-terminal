@@ -8,10 +8,10 @@
 * @brief: Contains implementation of the interpreter's echo command
 ==================================================================================================*/
 
-import { ArgParser } from "../arg-parser.js";
-import { Command } from "../command.js";
+import { ArgParser } from "../util/arg-parser.js";
+import { Command } from "./command.js";
 import { ERROR_MESSAGES } from "../config.js"; // Added for consistency
-import { OutputLine } from "../output-line.js";
+import { OutputLine } from "../util/output-line.js";
 
 /*==================================================================================================
     Class Definition: [EchoCommand]

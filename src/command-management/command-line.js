@@ -9,10 +9,10 @@
 *         Also contains implementation of caret class.
 ==================================================================================================*/
 
-import { CONFIG } from './config.js'
+import { CONFIG } from "../config.js";
 
 /*  Caret Class Definition
-***************************************************************************************************/
+ ***************************************************************************************************/
 /**
  * @class Caret
  * @brief Represents the text cursor for the terminal interface
@@ -29,7 +29,7 @@ class Caret {
 }
 
 /*  CommandLine Class Definition
-***************************************************************************************************/
+ ***************************************************************************************************/
 /**
  * @class CommandLine
  * @brief Handles command input including text manipulation and caret position
@@ -46,14 +46,14 @@ export class CommandLine {
 
         // Set up command line properties
         this.caret = new Caret();
-        this.leftText = ''; // text left of caret
-        this.rightText = ''; // text right of caret
-        this.prompt = { 
-            user: CONFIG.USER, 
-            dir: terminalInstance.currentDirectory, 
-            sign: CONFIG.SIGN 
-        }
-        
+        this.leftText = ""; // text left of caret
+        this.rightText = ""; // text right of caret
+        this.prompt = {
+            user: CONFIG.USER,
+            dir: terminalInstance.currentDirectory,
+            sign: CONFIG.SIGN,
+        };
+
         // Create DOM element
         const elements = this.createCommandLineElement(); // create command line and get spans
         this.element = elements.li;
@@ -67,58 +67,58 @@ export class CommandLine {
     }
 
     /*  DOM Manipulation
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Creates a new command line DOM element
      * @return {Object} Object containing the created DOM elements
      */
     createCommandLineElement() {
         // Create html list element
-        const li = document.createElement('li');
+        const li = document.createElement("li");
         li.className = `terminal__line terminal__line--prompt`;
 
         // Create the prompt section
-        const promptSpan = document.createElement('span');
-        promptSpan.className = 'line__prompt';
+        const promptSpan = document.createElement("span");
+        promptSpan.className = "line__prompt";
         li.appendChild(promptSpan);
 
-        const userSpan = document.createElement('span'); // ex. user@system
-        userSpan.className = 'prompt__user';
+        const userSpan = document.createElement("span"); // ex. user@system
+        userSpan.className = "prompt__user";
         userSpan.textContent = this.prompt.user;
         promptSpan.appendChild(userSpan);
 
-        const dirSpan = document.createElement('span'); // ex. dir/directory/
-        dirSpan.className = 'prompt__dir';
+        const dirSpan = document.createElement("span"); // ex. dir/directory/
+        dirSpan.className = "prompt__dir";
         dirSpan.textContent = this.prompt.dir;
         promptSpan.appendChild(dirSpan);
 
-        const signSpan = document.createElement('span'); // ex. $
-        signSpan.className = 'prompt__sign';
+        const signSpan = document.createElement("span"); // ex. $
+        signSpan.className = "prompt__sign";
         signSpan.textContent = this.prompt.sign;
         promptSpan.appendChild(signSpan);
 
         // Create the content section
-        const contentSpan = document.createElement('span');
-        contentSpan.className = 'line__content';
+        const contentSpan = document.createElement("span");
+        contentSpan.className = "line__content";
         li.appendChild(contentSpan);
 
-        const leftTextSpan = document.createElement('span'); // (text before caret)
-        leftTextSpan.className = 'content__left';
+        const leftTextSpan = document.createElement("span"); // (text before caret)
+        leftTextSpan.className = "content__left";
         contentSpan.appendChild(leftTextSpan);
 
-        const caretSpan = document.createElement('span');
-        caretSpan.className = 'content__caret';
+        const caretSpan = document.createElement("span");
+        caretSpan.className = "content__caret";
         caretSpan.textContent = this.caret.sym;
         contentSpan.appendChild(caretSpan);
 
-        const rightTextSpan = document.createElement('span'); // (text after caret)
-        rightTextSpan.className = 'content__right';
+        const rightTextSpan = document.createElement("span"); // (text after caret)
+        rightTextSpan.className = "content__right";
         contentSpan.appendChild(rightTextSpan);
 
         // Set specific attributes
         li.tabIndex = 0;
-        
-        return { li, leftTextSpan, rightTextSpan, caretSpan};
+
+        return { li, leftTextSpan, rightTextSpan, caretSpan };
     }
 
     /**
@@ -129,9 +129,9 @@ export class CommandLine {
             this.element.parentNode.removeChild(this.element);
         }
     }
-    
+
     /*  Text Modification
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Inserts a character into the current command line before the caret
      * @param {string} key Character to insert
@@ -148,7 +148,7 @@ export class CommandLine {
      */
     removePreviousCharacter() {
         if (this.caret.pos === 0) return; // skip if nothing to remove
-        this.leftText = this.leftText.substring(0, this.leftText.length-1);
+        this.leftText = this.leftText.substring(0, this.leftText.length - 1);
         this.caret.pos--;
 
         this.updateDomText();
@@ -165,20 +165,20 @@ export class CommandLine {
     }
 
     /*  Caret Movement
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Updates the position of the caret within the command text, moving it left or right
      * @param {string} direction Direction of caret movement ("left" or "right")
      * @return {boolean} Early return if caret is at left or right border
      */
     moveCaret(direction) {
-        if (direction === 'left') {
+        if (direction === "left") {
             if (this.caret.pos <= 0) return;
-            const movedText = this.leftText[this.leftText.length-1];
-            this.leftText = this.leftText.substring(0, this.leftText.length-1);
+            const movedText = this.leftText[this.leftText.length - 1];
+            this.leftText = this.leftText.substring(0, this.leftText.length - 1);
             this.rightText = movedText + this.rightText;
             this.caret.pos--;
-        } else if (direction === 'right') {
+        } else if (direction === "right") {
             if (this.caret.pos >= this.leftText.length + this.rightText.length) return;
             const movedText = this.rightText[0];
             this.rightText = this.rightText.substring(1);
@@ -190,7 +190,7 @@ export class CommandLine {
     }
 
     /*  Caret Visibility
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Toggles caret visibility. Used with setInterval() to periodically blink the caret
      */
@@ -202,7 +202,7 @@ export class CommandLine {
      * @brief Hides the caret in the displayed command text
      */
     hideCaret() {
-        this.caretSpan.classList.add('content__caret--hidden');
+        this.caretSpan.classList.add("content__caret--hidden");
         this.caret.visible = false;
     }
 
@@ -210,12 +210,12 @@ export class CommandLine {
      * @brief Shows the caret in the displayed command text
      */
     showCaret() {
-        this.caretSpan.classList.remove('content__caret--hidden');
+        this.caretSpan.classList.remove("content__caret--hidden");
         this.caret.visible = true;
     }
 
     /*  Text Return
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Gets the full text content of the command line
      * @return {string} Combined text from both sides of the caret
@@ -225,13 +225,13 @@ export class CommandLine {
     }
 
     /*  Text Updating
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Sets the text to the left of the caret in the command line
      * @param {string} left Text for the left side to be set to
      */
     setLeftText(left) {
-        this.leftText = left || '';
+        this.leftText = left || "";
     }
 
     /**
@@ -239,7 +239,7 @@ export class CommandLine {
      * @param {string} right Text for the right side to be set to
      */
     setRightText(right) {
-        this.rightText = right || '';
+        this.rightText = right || "";
     }
 
     /**
@@ -251,7 +251,7 @@ export class CommandLine {
     }
 
     /*  Event Listening
-    ***********************************************************************************************/
+     ***********************************************************************************************/
     /**
      * @brief Defines and adds a key capture event listener to the command line element
      */
@@ -261,13 +261,13 @@ export class CommandLine {
                 this.handleKeydown(event);
             }
         };
-        this.element.addEventListener('keydown', this.keyDownHandlerID);
+        this.element.addEventListener("keydown", this.keyDownHandlerID);
     }
 
     /**
      * @brief Removes the key capture event listener from the command line element
      */
     disableKeyCapture() {
-        this.element.removeEventListener('keydown', this.keyDownHandlerID);
+        this.element.removeEventListener("keydown", this.keyDownHandlerID);
     }
 }

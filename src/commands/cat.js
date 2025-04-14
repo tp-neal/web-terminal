@@ -8,11 +8,11 @@
 * @brief: Contains implementation of the interpreter's cat command
 ==================================================================================================*/
 
-import { Command } from "../command.js";
-import { ArgParser } from "../arg-parser.js";
+import { Command } from "./command.js";
+import { ArgParser } from "../util/arg-parser.js";
 import { ERROR_MESSAGES } from "../config.js"; // Added for consistency, though not used directly yet
-import { OutputLine } from "../output-line.js";
-import { RESOLUTION } from "../file-system.js";
+import { OutputLine } from "../util/output-line.js";
+import { RESOLUTION } from "../fs-management/filesystem.js";
 
 /*==================================================================================================
     Module Constants

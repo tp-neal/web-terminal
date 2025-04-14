@@ -8,16 +8,15 @@
 * @brief: A web-based terminal emulator with command history and UI controls
 ==================================================================================================*/
 
-import { ArgParser } from "./arg-parser.js";
-import { CommandHistory } from "./command-history.js";
-import { CommandLine } from "./command-line.js";
-import { CommandRegistry } from "./command-registry.js";
+import { ArgParser } from "./util/arg-parser.js";
+import { CommandHistory } from "./command-management/command-history.js";
+import { CommandLine } from "./command-management/command-line.js";
+import { CommandRegistry } from "./command-management/command-registry.js";
 import { CONFIG, ELEMENT_CLASSES, ERROR_MESSAGES } from "./config.js";
-import { Filesystem } from "./file-system.js";
-import { OutputLine } from "./output-line.js";
-import { TestSuite } from "./testsuit.js";
-
-import { DOMHelper, protectedKeyCombination } from "./dom-util.js";
+import { Filesystem } from "./fs-management/filesystem.js";
+import { OutputLine } from "./util/output-line.js";
+import { TestSuite } from "./testing/testsuit.js";
+import { DOMHelper, protectedKeyCombination } from "./util/dom-util.js";
 
 /*  Class Definition
  ***************************************************************************************************/

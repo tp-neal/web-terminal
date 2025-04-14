@@ -8,10 +8,10 @@
 * @brief: Contains implementation of the interpreter's todo command
 ==================================================================================================*/
 
-import { Command } from "../command.js";
+import { Command } from "./command.js";
 import { CONFIG, ERROR_MESSAGES } from "../config.js"; // Import CONFIG and ERROR_MESSAGES
-import { OutputLine } from "../output-line.js";
-import { ArgParser } from "../arg-parser.js"; // Although unused, good practice
+import { OutputLine } from "../util/output-line.js";
+import { ArgParser } from "../util/arg-parser.js"; // Although unused, good practice
 
 /*==================================================================================================
     Class Definition: [TodoCommand]

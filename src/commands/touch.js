@@ -8,12 +8,13 @@
 * @brief: Contains implementation of the interpreter's touch command
 ==================================================================================================*/
 
-import { ArgParser } from "../arg-parser.js";
-import { Command } from "../command.js";
+import { ArgParser } from "../util/arg-parser.js";
+import { Command } from "./command.js";
 import { ERROR_MESSAGES } from "../config.js";
-import { FSNode, RESOLUTION } from "../file-system.js";
-import { FSUtil } from "../fs-util.js";
-import { OutputLine } from "../output-line.js";
+import { RESOLUTION } from "../fs-management/filesystem.js";
+import { FSNode } from "../fs-management/fs-node.js";
+import { FSUtil } from "../fs-management/fs-util.js";
+import { OutputLine } from "../util/output-line.js";
 
 /*==================================================================================================
     Class Definition: [TouchCommand]

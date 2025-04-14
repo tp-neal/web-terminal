@@ -8,11 +8,11 @@
 * @brief: Contains inmplementation of the interpreter's ls command
 ==================================================================================================*/
 
-import { ArgParser } from "../arg-parser.js";
-import { Command } from "../command.js";
+import { ArgParser } from "../util/arg-parser.js";
+import { Command } from "./command.js";
 import { ERROR_MESSAGES } from "../config.js";
-import { RESOLUTION } from "../file-system.js";
-import { OutputLine } from "../output-line.js";
+import { RESOLUTION } from "../fs-management/filesystem.js";
+import { OutputLine } from "../util/output-line.js";
 
 /*==================================================================================================
     Class Definition: [LsCommand]

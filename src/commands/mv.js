@@ -8,12 +8,12 @@
 * @brief: Contains implementation of the interpreter's mv command
 ==================================================================================================*/
 
-import { ArgParser } from "../arg-parser.js"; // Import ArgParser
-import { Command } from "../command.js";
+import { ArgParser } from "../util/arg-parser.js"; // Import ArgParser
+import { Command } from "./command.js";
 import { ERROR_MESSAGES } from "../config.js";
-import { FSNode, RESOLUTION } from "../file-system.js"; // Import FSNode if needed, RESOLUTION
-import { FSUtil } from "../fs-util.js";
-import { OutputLine } from "../output-line.js"; // Import OutputLine
+import { RESOLUTION } from "../fs-management/filesystem.js"; // Import FSNode if needed, RESOLUTION
+import { FSUtil } from "../fs-management/fs-util.js";
+import { OutputLine } from "../util/output-line.js"; // Import OutputLine
 
 /*==================================================================================================
     Module Constants

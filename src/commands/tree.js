@@ -8,11 +8,11 @@
 * @brief: Contains implementation of the interpreter's tree command
 ==================================================================================================*/
 
-import { Command } from "../command.js";
-import { OutputLine } from "../output-line.js"; // Import OutputLine
-import { ArgParser } from "../arg-parser.js"; // Although unused, good practice
+import { Command } from "./command.js";
+import { OutputLine } from "../util/output-line.js"; // Import OutputLine
+import { ArgParser } from "../util/arg-parser.js"; // Although unused, good practice
 import { ERROR_MESSAGES } from "../config.js"; // Added for consistency
-import { RESOLUTION } from "../file-system.js"; // Import RESOLUTION if path resolution is added
+import { RESOLUTION } from "../fs-management/filesystem.js"; // Import RESOLUTION if path resolution is added
 
 /*==================================================================================================
     Class Definition: [TreeCommand]

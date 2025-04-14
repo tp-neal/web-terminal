@@ -9,22 +9,22 @@
           have been implemented for usage in the terminal. Acts as a hub for executing commands.
 ==================================================================================================*/
 
-import { Filesystem } from "./file-system.js";
-import { OutputLine } from "./output-line.js";
-import { CatCommand } from "./commands/cat.js";
-import { CdCommand } from "./commands/cd.js";
-import { ClearCommand } from "./commands/clear.js";
-import { CpCommand } from "./commands/cp.js";
-import { EchoCommand } from "./commands/echo.js";
-import { LsCommand } from "./commands/ls.js";
-import { MkdirCommand } from "./commands/mkdir.js";
-import { MvCommand } from "./commands/mv.js";
-import { PwdCommand } from "./commands/pwd.js";
-import { RmCommand } from "./commands/rm.js";
-import { TodoCommand } from "./commands/todo.js";
-import { TouchCommand } from "./commands/touch.js";
-import { TreeCommand } from "./commands/tree.js";
-import { ERROR_MESSAGES } from "./config.js";
+import { Filesystem } from "../fs-management/filesystem.js";
+import { OutputLine } from "../util/output-line.js";
+import { CatCommand } from "../commands/cat.js";
+import { CdCommand } from "../commands/cd.js";
+import { ClearCommand } from "../commands/clear.js";
+import { CpCommand } from "../commands/cp.js";
+import { EchoCommand } from "../commands/echo.js";
+import { LsCommand } from "../commands/ls.js";
+import { MkdirCommand } from "../commands/mkdir.js";
+import { MvCommand } from "../commands/mv.js";
+import { PwdCommand } from "../commands/pwd.js";
+import { RmCommand } from "../commands/rm.js";
+import { TodoCommand } from "../commands/todo.js";
+import { TouchCommand } from "../commands/touch.js";
+import { TreeCommand } from "../commands/tree.js";
+import { ERROR_MESSAGES } from "../config.js";
 
 /*  Class Definition
  ***************************************************************************************************/
