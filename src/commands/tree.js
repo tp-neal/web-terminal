@@ -29,7 +29,7 @@ export class TreeCommand extends Command {
     static supportedArgs = [];
 
     /* Constructor
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Initializes a tree command instance.
      * @param {Object} data - Object containing required dependencies.
@@ -41,7 +41,7 @@ export class TreeCommand extends Command {
     }
 
     /* Public Methods
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Generates and returns a string representation of the filesystem tree.
      * @param {string[]} args - Array of command arguments (optional starting directory).

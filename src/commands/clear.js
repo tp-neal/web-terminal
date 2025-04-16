@@ -27,7 +27,7 @@ export class ClearCommand extends Command {
     static usage = "clear";
 
     /* Constructor
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Initializes a clear command instance.
      * @param {Object} data - Object containing required dependencies.
@@ -37,7 +37,7 @@ export class ClearCommand extends Command {
     }
 
     /* Public Methods
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Instructs the terminal to clear its display.
      * @param {string[]} args - Array of command arguments (should be empty).

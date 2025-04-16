@@ -31,7 +31,7 @@ export class TouchCommand extends Command {
     static supportedArgs = [];
 
     /* Constructor
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Initializes a touch command instance.
      * @param {Object} data - Object containing required dependencies.
@@ -43,7 +43,7 @@ export class TouchCommand extends Command {
     }
 
     /* Public Methods
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Creates new files or updates timestamps for existing files.
      * @param {string[]} args - Array of command arguments (switches and file paths).

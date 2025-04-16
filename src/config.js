@@ -9,7 +9,7 @@
 ==================================================================================================*/
 
 /*  Configuration Constants
- ***************************************************************************************************/
+ **************************************************************************************************/
 /**
  * @brief Global configuration settings for the terminal
  */
@@ -42,7 +42,7 @@ export const CONFIG = {
         "    ✓ cat      (concatenate and display file contents)\n" +
         "    ✓ cd       (change directory)\n" +
         "    ✓ clear    (clear terminal screen)\n" +
-        "    ✓ cp       (copy file/directory)\n" +
+        "   ✓✓ cp       (copy file/directory)\n" +
         "    ✓ echo     (display a line of text)\n" +
         "    ✓ ls       (list directory contents)\n" +
         "    ✓ mkdir    (make directory)\n" +

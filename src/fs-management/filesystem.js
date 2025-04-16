@@ -25,7 +25,7 @@ export const RESOLUTION = {
 };
 
 /*  Filesystem Class Definition
- ***************************************************************************************************/
+ **************************************************************************************************/
 /**
  * @class Filesystem
  * @brief Manages the virtual file system structure and operations
@@ -40,10 +40,11 @@ export class Filesystem {
         this.root = root;
         this.home = home;
         this.cwd = cwd;
+        this.fsUtil = new FSUtil(this.root, this.home); // pass root and home name as a reference
     }
 
     /*  Path Traversal
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Resolves a path to find a target node and its parent without changing cwd.
      * @param {string} path - The path string to resolve (relative or absolute).
@@ -59,70 +60,47 @@ export class Filesystem {
      * @property {string[]|null} errors - Additional details on error.
      */
     resolvePath(path, options = {}) {
-        // --- 0. FORMAT VARIABLES ---
-        // Destructure and set option defaults
-        const { createIntermediary = false, targetMustHaveType = null } = options;
+        // --- 0. Format Variables ---
+        const { 
+            createIntermediary = false, 
+            targetMustExist = false 
+        } = options;
 
-        // Create array for error messages
-        const errors = [];
+        const errors = []; // Container for errors during path resolution
 
-        // --- 1. Handle empty/root paths ---
-        // Root Directory
-        if (path === "/") {
-            return {
-                status: RESOLUTION.FOUND,
-                targetNode: this.root,
-                parentNode: null,
-                targetName: "/",
-                errors,
-            };
-        }
 
-        // Substitute path of home directory for simplicity
-        path = path.substring(path.indexOf("~")); // Since ~ is absolute, we ignore the prefix
-        path = path.replace("~", this.home.getFilePath());
-
-        // --- 2. Tokenize Path ---
+        // --- 1. Prepare Path ---
         const pathParts = FSUtil.tokenizePath(path);
-        // Check if tokenization returned null result
-        if (pathParts === null) {
-            errors.push({ type: "error", content: "Path tokenization returned null result" });
-            return {
-                status: RESOLUTION.INVALID_PATH,
-                targetNode: null,
-                parentNode: null,
-                targetName: null,
-                errors,
-            };
+        if (!pathParts) {
+            throw new Error("Bad path tokenization");
         }
 
-        // Check if tokenized path is empty
-        if (pathParts.length === 0) {
-            errors.push({ type: "error", content: "Path tokenization returned empty result" });
-            return {
-                status: RESOLUTION.INVALID_PATH,
-                targetNode: null,
-                parentNode: null,
-                targetName: null,
-                errors,
-            };
-        }
-
-        // --- 3. Determine Start Node ---
-        const firstChar = path[0];
+        // Set starting node pointer
         let cursor;
-        if (firstChar === "/") {
-            cursor = this.root; // the '/' was already filtered in tokenizePath
-        } else if (firstChar === "~") {
+        if (pathParts[0] === '/') {
+            cursor = this.root;
+            pathParts.shift();
+        } else if (pathParts[0] === '~') {
             cursor = this.home;
-            pathParts.shift(); // remove '~' from the path parts
+            pathParts.shift();
         } else {
             cursor = this.cwd;
         }
 
-        // --- 4. Iterate Through Tokens Until Last ---
-        let n = pathParts.length;
-        for (let i = 0; i < n - 1; i++) {
+        // Catch case that the path was a single '/' or '~'
+        if (pathParts.length === 0) {
+            return {
+                status: RESOLUTION.FOUND,
+                targetNode: cursor,
+                parentNode: (cursor.parent) ? cursor.parent : null,
+                targetName: cursor.getFullName(),
+                errors
+            }
+        }
+
+
+        // --- 2. Iterate Through Tokens Until Last ---
+        for (let i = 0; i < pathParts.length - 1; i++) {
             const part = pathParts[i];
 
             // If part is '.', stay in the same directory
@@ -138,12 +116,11 @@ export class Filesystem {
                 continue;
             }
 
-            // Check if the current directory contains the child directory
-            if (cursor.hasChild(part)) {
-                const child = cursor.getChild(part);
+            // Either scope into existing directory, create it, or produce error
+            const child = cursor.getChild(part);
+            if (child) {
 
-                // Check if the child is a directory, if not, we cannot scope into it, return error
-                if (!child.isDirectory) {
+                if (!child.isDirectory) { // We cant scope into a non-directory, return error
                     errors.push({ type: "error", content: ERROR_MESSAGES.NOT_A_DIRECTORY(part) });
                     return {
                         status: RESOLUTION.NOT_A_DIRECTORY,
@@ -154,14 +131,13 @@ export class Filesystem {
                     };
                 }
 
-                // If current director doesnt contain child, and createIntermediary is true, create the
-                // new dierctory, and move the cursor to it
             } else if (createIntermediary) {
+                // We've been instructed to create nonexisting intermediary directories
                 const newDir = new FSNode(part, "dir");
                 cursor.addChild(newDir);
 
-                // Return error if the cursor doesnt have the child, and createIntermediary is false
             } else {
+                // Child wasnt found, and not specified to make intermediary, return error
                 errors.push({ type: "error", content: ERROR_MESSAGES.PATH_NOT_FOUND(part) });
                 return {
                     status: RESOLUTION.NOT_FOUND,
@@ -172,75 +148,52 @@ export class Filesystem {
                 };
             }
 
-            // Directory exists, move to it
-            cursor = cursor.getChild(part);
+            // Move into next directory
+            cursor = child;
         }
 
-        // Store the targetName so we can change it if the last part is a special case
-        let targetName = pathParts[n - 1];
+        // --- 3. Handle Last Token Special Cases --- 
+        const lastPath = pathParts[pathParts.length-1];
+        let targetName = lastPath;
 
-        // If part is '.', stay in the same directory
-        if (targetName === ".") {
-            targetName = cursor.name;
-        }
+        // Check for Special Cases: If we encounter a '.' or '..' we have scoped too far.
+        // We currently assume that the last path part is in the directory of the current cursor.
+        // So in the case of '.' we attempt to scope out once, and for '..' we do this twice.
+        if (lastPath === '.') {
+            targetName = cursor.getFullName();
+            cursor = (cursor.parent) ? cursor.parent : cursor;
+        } else if (lastPath === '..') {
+            cursor = (cursor.parent) ? cursor.parent : cursor;
+            targetName = cursor.getFullName();
+            cursor = (cursor.parent) ? cursor.parent : cursor;
+        } 
 
-        // If part is '..', move up to parent directory if it exists
-        if (targetName === "..") {
-            if (cursor.parent) {
-                cursor = cursor.parent;
-            }
-            targetName = cursor.name;
-        }
+        // --- 4. Finalize Info About Destination --- 
+        const targetNode = cursor.getChild(targetName);
+        const parentNode = (cursor === this.root) ? null : cursor;
+        let status = RESOLUTION.FOUND;
 
-        if (targetName === "/") {
-            return {
-                status: RESOLUTION.FOUND,
-                targetNode: this.root,
-                parentNode: null,
-                targetName: this.root.name,
-                errors,
-            };
-        }
-
-        // --- 5. Check Last Token ---
-        const targetExists = cursor.hasChild(targetName);
-        const targetMatchingTypeExists = cursor.hasChild(targetName, targetMustHaveType);
-        const targetNode = cursor.getChild(
-            targetName,
-            targetMustHaveType ? targetMustHaveType : null
-        );
-        const parentNode = cursor;
-        let status = null;
-
-        // Check if target node withthout specified type exists
-        if (targetExists) {
-            // If target doesnt match type, and type is specified, return error
-            if (!targetMatchingTypeExists && targetMustHaveType) {
+        // If target doesn't exist, update status, and produce an error if requested
+        if (!targetNode) {
+            status = RESOLUTION.PARENT_FOUND_TARGET_MISSING
+            if (targetMustExist) {
                 errors.push({ type: "error", content: ERROR_MESSAGES.PATH_NOT_FOUND(targetName) });
-                return {
-                    status: RESOLUTION.TARGET_FOUND_TYPE_MISMATCH,
-                    targetNode,
-                    parentNode,
-                    targetName,
-                    errors,
-                };
             }
-
-            // Target doesn't exist, update status
-        } else {
-            status = RESOLUTION.PARENT_FOUND_TARGET_MISSING;
-            errors.push({ type: "error", content: ERROR_MESSAGES.PATH_NOT_FOUND(targetName) });
         }
 
-        // --- 6. Return Result ---
-        return {
+        
+        // --- 5. Package Results ---
+        const returnPackage = { // we currently bundle this for easy debug printing before return
             // If status wasn't already previously set to PARENT_FOUND_TARGET_MISSING, set it to FOUND
-            status: status ? status : RESOLUTION.FOUND,
+            status,
             targetNode,
             parentNode,
             targetName,
             errors,
-        };
+        }
+
+        // --- 6. Return Results ---
+        return returnPackage;
     }
 
     /**
@@ -288,7 +241,7 @@ export class Filesystem {
     }
 
     /*  Node State Modification
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Deletes a node from the filesystem.
      * @param {FSNode} node - Node to delete.
@@ -314,26 +267,8 @@ export class Filesystem {
         return true;
     }
 
-    /**
-     * @brief Copies a node and its contents to a new location.
-     * @param {FSNode} node - Node to copy.
-     * @param {string} newName - New name for the copied node (optional).
-     * @returns {FSNode} - Copied node.
-     */
-    copyNode(node, { newName, recursive } = {}) {
-        const copy = new FSNode(newName || node.name, node.type, node.content);
-        copy.parent = node.parent;
-        if (node.isDirectory && recursive) {
-            for (const [childName, childNode] of node.children) {
-                copy.addChild(this.copyNode(childNode));
-            }
-        }
-
-        return copy;
-    }
-
     /*  Pathname Malipulation
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Converts home directory path to tilde notation
      * @param {string} path - Full path to convert
@@ -348,7 +283,7 @@ export class Filesystem {
     }
 
     /*  Printing
-     ***********************************************************************************************/
+     **********************************************************************************************/
     getFSTree(node, currentPrefix, isLast, lines) {
         let outputString = "";
         const outputLine = new OutputLine();
@@ -395,7 +330,7 @@ export class Filesystem {
     }
 
     /*  Testing
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Creates a test filesystem with predefined structure and dummy content
      * @return {Object} Object containing root, home, and current working directory nodes

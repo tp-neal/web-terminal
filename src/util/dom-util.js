@@ -12,7 +12,7 @@
 import { ELEMENT_CLASSES } from "../config.js";
 
 /*  Class Definition
- ***************************************************************************************************/
+ **************************************************************************************************/
 export class DOMHelper {
     static createOutputLineElement(line) {
         // Create list element to hold new entry

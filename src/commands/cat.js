@@ -37,7 +37,7 @@ export class CatCommand extends Command {
     static supportedArgs = [];
 
     /* Constructor
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Initializes a cat command instance.
      * @param {Object} data - Object containing required dependencies.
@@ -49,7 +49,7 @@ export class CatCommand extends Command {
     }
 
     /* Public Methods
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Displays the content of specified files.
      * @param {string[]} args - Array of command arguments (switches and file paths).

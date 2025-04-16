@@ -10,7 +10,7 @@
 ==================================================================================================*/
 
 /*  Class Definition
-***************************************************************************************************/
+ **************************************************************************************************/
 /**
  * @class CommandHistory
  * @brief Manages the command history for up/down arrow navigation
@@ -24,7 +24,7 @@ export class CommandHistory {
         this.history = [];
         this.commandBuffer = ``;
         this.iter = 0;
-        this.commandLine = commandLine // current active commandline
+        this.commandLine = commandLine; // current active commandline
     }
 
     /**
@@ -36,25 +36,24 @@ export class CommandHistory {
             console.error(`Command History Naviagation Failed: CommandLine instance is null`);
         }
 
-        let retrievedCommand = '';
-        if (direction === 'previous') {
+        let retrievedCommand = "";
+        if (direction === "previous") {
             if (this.iter === this.history.length) {
                 this.commandBuffer = this.commandLine.getFullText();
             }
             retrievedCommand = this.getPrevious();
-
-        } else if (direction === 'next') {
+        } else if (direction === "next") {
             retrievedCommand = this.getNext();
         }
 
         // If nothing was retrieved from the command buffer, ignore naviation
-        if (retrievedCommand === undefined) return
+        if (retrievedCommand === undefined) return;
 
         // Update the command line with the retrieved command
         this.commandLine.setLeftText(retrievedCommand);
-        this.commandLine.setRightText('');
+        this.commandLine.setRightText("");
         this.commandLine.caret.pos = retrievedCommand.length;
-        this.commandLine.updateDomText(); 
+        this.commandLine.updateDomText();
     }
 
     /**
@@ -72,12 +71,10 @@ export class CommandHistory {
      */
     getPrevious() {
         // If history is empty, return undefined signaling do nothing.
-        if (this.history.length === 0)
-            return undefined;
+        if (this.history.length === 0) return undefined;
 
         // If still in bounds, decrement iterator and return result
-        if (this.iter > 0) 
-            this.iter--;
+        if (this.iter > 0) this.iter--;
 
         return this.history[this.iter];
     }
@@ -88,23 +85,19 @@ export class CommandHistory {
      */
     getNext() {
         // If history is empty, return undefined signaling do nothing.
-        if (this.history.length === 0)
-            return undefined;
+        if (this.history.length === 0) return undefined;
 
         // If still in bounds, increment iterator and return result
-        if (this.iter < this.history.length) 
-            this.iter++;
+        if (this.iter < this.history.length) this.iter++;
 
         // If history points to current command, return it, otherwise return history
-        if (this.iter < this.history.length) 
-            return this.history[this.iter];
-        else 
-            return this.commandBuffer;
+        if (this.iter < this.history.length) return this.history[this.iter];
+        else return this.commandBuffer;
     }
 
     /**
      * @brief Sets the new active command line, to know which line's text to manipulate/capture
-     * @param {CommandLine} commandLine 
+     * @param {CommandLine} commandLine
      */
     setActiveLine(commandLine) {
         this.commandLine = commandLine;

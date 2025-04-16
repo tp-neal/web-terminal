@@ -9,10 +9,11 @@
           and folders.
 ==================================================================================================*/
 
+import { SUPPORTED_TYPES } from "../config.js";
 import { FSUtil } from "./fs-util.js";
 
 /*  File/directory Class Definition
- ***************************************************************************************************/
+ **************************************************************************************************/
 /**
  * @class FSNode
  * @brief Represents a node in the filesystem (either a file or directory)
@@ -25,7 +26,7 @@ export class FSNode {
     isHidden; // True if the file/directory is hidden (auto set in this.setName())
 
     parent; // Parent directory of the file/directory
-    cihldren; // Children files/dierectories of this node
+    children; // Children files/dierectories of this node
 
     content; // Text content of the file (if applicable)
 
@@ -37,24 +38,37 @@ export class FSNode {
      * @param {string} type - Type of node ('dir' or file extension)
      */
     constructor(name, type, content) {
-        if (!name) {
-            console.error(`FSNode constructor requires name | provided: {name: '${name}'}`);
-            return;
-        }
-
-        const { name: trimmedName } = FSUtil.parseNameAndExtension(name);
-
-        this.name = trimmedName;
-        this.isHidden = name.startsWith(".");
+        // Handle type initialization
         this.type = type ? type : "txt"; // default to text
-
         this.isDirectory = type === "dir";
 
+        const typeIsSupported = Object.keys(SUPPORTED_TYPES).includes(type);
+        if (type && !typeIsSupported) {
+            throw new Error(`FSNode type '${type}' is not supported`);
+        }
+
+        // Handle name initialization
+        if (!name) {
+            throw new Error(`FSNode constructor requires name`);
+        }
+
+        this.name = name;
+        this.isHidden = name.startsWith(".");
+
+        if (this.isDirectory && !FSUtil.isValidDirectoryName(this.name)) {
+            throw new Error(`Invalid directory name: ${this.name}`);
+        } else if (!this.isDirectory && !FSUtil.isValidFileName(this.name)) {
+            throw new Error(`Invalid directory name: ${this.name}`);
+        }
+
+        // Set up parent and child information
         this.parent = null;
         this.children = !this.isDirectory ? null : new Map();
 
+        // Initialize content
         this.content = !this.isDirectory && content ? content : null;
 
+        // Create metadata
         this.metadata = {
             created: new Date(), // Use Date object
             modified: new Date(), // Use Date object
@@ -62,8 +76,8 @@ export class FSNode {
         };
     }
 
-    /*  Name Management
-     ***********************************************************************************************/
+    /*  Name/Type Management
+     **********************************************************************************************/
     /**
      * @brief Gets the full name of the node including extension for files.
      * Used as the key in the parent's children map.
@@ -74,93 +88,82 @@ export class FSNode {
     }
 
     /**
-     * @brief Gets the name of the node without its type (extension).
-     * @returns {string} Name of the node without the type (e.g., "file" or "directory_name").
-     */
-    getNameWithoutType() {
-        return this.name;
-    }
-
-    /**
      * @brief Sets the name of the node and updates its hidden status.
      * @param {string} name - New name for the node (without extension).
      */
     setName(name) {
         if (!name) {
-            console.error(
-                `FSNode.setName: Received invalid name: '${name}' for node originally named '${this.name}'`
-            );
-            return; // Prevent setting an invalid name
+            throw new Error(`Cannot rename '${this.name}' to invalid name of '${name}'`);
         }
-        // Update the name of the node
-        this.name = name;
+
+        // Check name validity
+        if (this.isDirectory && !FSUtil.isValidDirectoryName(this.name)) {
+            throw new Error(`Invalid directory name: ${this.name}`);
+        } else if (!this.isDirectory && !FSUtil.isValidFileName(this.name)) {
+            throw new Error(`Invalid directory name: ${this.name}`);
+        }
+
+        if (this.parent) {
+            const newFullName = name + "." + this.type; // construct new name to check for existence
+
+            if (this.parent.hasChild(newFullName)) {
+                throw new Error(
+                    `Directory '${this.parent.getFullName()}' already contains '${newFullName}'`
+                );
+            }
+
+            this.parent.removeChild(this.getFullName());
+            this.parent.addChild(newFullName); // here we use the full name + extension as a key
+        }
+
+        this.name = name; // we set only the name component here to reflect the one we just added
         this.isHidden = this.name.startsWith(".");
         this.updateModifiedTime();
     }
 
     /*  Path Management
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Gets the full path of this node from root
      * @return {string} Full path starting from root
      */
     getFilePath() {
-        let node = this;
         let path = "";
-        while (node) {
-            path = node.name + (path && node.name !== "/" ? "/" : "") + path; // build path correctly
+        let node = this;
 
-            // Stop at root - check parent, not name
-            if (node.parent === null && node.name === "/") break; // Reached root
+        while (node) {
+            path = node.name + (node.name === "/" ? "" : "/") + path;
             node = node.parent;
         }
-        // Ensure leading slash if it wasn't the root itself
-        if (path !== "/" && !path.startsWith("/")) {
-            path = "/" + path;
-        }
+
         return path;
     }
 
     /*  Child Management
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Checks if directory has a child with specified full name and optional type.
      * @param {string} fullName - Full name of child (name.ext for files, name for dirs).
      * @param {string} [type] - Optional type of child ('dir' or file extension).
      * @return {boolean} True if child exists and matches type (if specified).
      */
-    hasChild(fullName, type) {
-        // Check if child exists using the full name as the key
-        const child = this.getChild(fullName, type);
-        if (!child) {
-            return false;
-        }
-
-        return true;
+    hasChild(fullName) {
+        const child = this.getChild(fullName);
+        return !!child;
     }
 
     /**
      * @brief Gets a child node by its full name, optionally checking type.
      * @param {string} fullName - Full name of child (name.ext for files, name for dirs).
-     * @param {string} [type] - Optional required type ('dir' or file extension).
-     * @return {FSNode|null} Child node if found (and type matches, if specified), otherwise null.
+     * @return {FSNode|undefined} Child node if found (and type matches, if specified), otherwise undef.
      */
-    getChild(fullName, type) {
-        // Files cant have children
+    getChild(fullName) {
         if (!this.isDirectory) {
-            return null;
+            throw new Error(`Cannot get children of '${this.getFullName()}: not a directory`);
         }
 
-        // Retrieve using the full name key
+        // Retrieve using the full name as the key
         const child = this.children.get(fullName);
-        if (!child) {
-            return null;
-        }
-
-        // Optional type check
-        if (type && child.type !== type) {
-            return null;
-        }
 
         return child;
     }
@@ -171,22 +174,21 @@ export class FSNode {
      * @return {boolean} True if successful, false if not a directory or child already exists.
      */
     addChild(child) {
-        // Cannot add children to a file
         if (!this.isDirectory) {
-            console.error(`Cannot add child to non-directory: ${this.getFullName()}`);
-            return false;
+            throw new Error(`Cannot add child to '${this.getFullName()}: not a directory`);
         }
 
         // Check if the this directory already has the child
         const childFullName = child.getFullName();
         if (this.hasChild(childFullName)) {
-            console.error(`directory '${this.getFullName()}' already has child '${childFullName}'`);
-            return false;
+            throw new Error(
+                `Directory '${this.getFullName()}' already contains '${child.getFullName()}'`
+            );
         }
 
         // Set childs parent directory to this, and add to children map
         child.parent = this;
-        this.children.set(childFullName, child); // Use full name as key
+        this.children.set(childFullName, child); // use full name as key
 
         this.updateModifiedTime();
         return true;
@@ -198,36 +200,33 @@ export class FSNode {
      * @return {boolean} True if successfully removed, false if not found or not a directory.
      */
     removeChild(fullName) {
-        // Cannot remove children from a file
         if (!this.isDirectory) {
-            console.error(`Cannot remove child from non-directory: ${this.getFullName()}`);
-            return false;
+            throw new Error(`Cannot remove child from '${this.getFullName()}: not a directory`);
         }
 
-        // Check if the this directory has the child
-        if (!this.hasChild(fullName)) {
-            return false;
-        }
-
-        // Delete using the full name key
+        // Get the child node instance
         const child = this.getChild(fullName);
+
+        // Return null if there parent doesnt contain child
+        if (child === undefined) {
+            return null;
+        }
+
         child.parent = null;
-        const deleted = this.children.delete(fullName);
 
         this.updateModifiedTime();
-        return deleted;
+        return this.children.delete(fullName);
     }
 
     /*  Content Management
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Gets the content of the file. Only applicable for files, not directories.
      * @returns {string} Contents of the file, or null if not a file/not set.
      */
     getContent() {
-        if (this.isDirectory) {
-            console.error(`Cannot set content for non-directory: ${this.getFullName()}`);
-            return null;
+        if (!this.isDirectory) {
+            throw new Error(`Cannot retrieve content from '${this.getFullName()}': not a file`);
         }
 
         return this.content;
@@ -240,8 +239,7 @@ export class FSNode {
      */
     setContent(content) {
         if (!this.isDirectory) {
-            console.error(`Cannot set content for non-directory: ${this.getFullName()}`);
-            return false;
+            throw new Error(`Cannot set content of '${this.getFullName()}': not a file`);
         }
 
         this.content = content;
@@ -250,11 +248,38 @@ export class FSNode {
     }
 
     /*  Metadata Management
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Update the date/time of the last modified attribute of file/directory.
      */
     updateModifiedTime() {
         this.metadata.modified = new Date();
+    }
+
+    updateSize() {
+        this.metadata.size = content ? this.content.length : 0;
+    }
+
+    /**
+     * @brief Copies a node and its contents to a new location.
+     * @param {FSNode} node - Node to copy.
+     * @param {string} newName - New name for the copied node (optional).
+     * @returns {FSNode} - Copied node.
+     */
+    clone(info = {}) {
+        const {
+            newName = null,
+            recursive = false
+        } = info;
+
+        const clone = new FSNode(newName || this.name, this.type, this.content);
+        clone.parent = this.parent;
+        if (this.isDirectory && recursive) {
+            for (const [childName, childNode] of this.children) {
+                clone.addChild(childNode.clone({ recursive }));
+            }
+        }
+
+        return clone;
     }
 }

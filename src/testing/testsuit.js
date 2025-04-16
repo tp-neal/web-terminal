@@ -9,7 +9,7 @@
 ==================================================================================================*/
 
 /*  Class Definition
- ***************************************************************************************************/
+ **************************************************************************************************/
 /**
  * @class TestSuite
  * @brief Runs a series of standard usage tests against the Terminal instance to ensure commands function correctly.
@@ -24,7 +24,6 @@ export class TestSuite {
             throw new Error("TestSuite requires a valid Terminal instance with a 'run' method.");
         }
         this.terminal = terminal;
-        console.log("TestSuite Initialized. Preparing to run tests...");
     }
 
     /**
@@ -33,10 +32,7 @@ export class TestSuite {
      * @param {string} description - A clear description of what the test case is verifying.
      * @param {number} [delayMs=250] - Milliseconds to pause after running the command (allows UI updates).
      */
-    async _runCommand(command, description = "", delayMs = 0) {
-        console.log(`\n--- Testing: ${description} ---`);
-        console.log(`COMMAND: ${command}`);
-
+    async _runCommand(command, delayMs = 0) {
         // Directly call the terminal's run method to simulate user input
         this.terminal.run(command);
 
@@ -44,8 +40,6 @@ export class TestSuite {
         if (delayMs > 0) {
             await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
-
-        console.log("--- Test Complete ---");
     }
 
     /**
@@ -346,143 +340,129 @@ export class TestSuite {
     }
 
     /**
-     * @brief Tests the 'cp' (copy) command using the existing filesystem structure.
+     * @brief Tests the functionality of the 'cp' command.
+     *
+     * This asynchronous function executes various test cases to verify the behavior
+     * of the 'cp' command in different scenarios, including copying single files,
+     * single directories, and multiple sources to various destinations.
      */
     async testCp() {
-        console.log("\n===== Testing CP =====");
+        /* Bugs:
+        - copying multiple files to an exitent directory
+        */
 
-        // --- Setup ---
-        // Ensure we start in the user's home directory where test files exist
-        await this._runCommand("cd ~", "CP Setup: Go to home directory (~/user)");
-        await this._runCommand("pwd", "CP Setup: Verify current directory");
+        console.log("--- Starting cp command tests ---");
 
-        // Create a dedicated destination directory for copy tests
-        await this._runCommand(
-            "mkdir cp_test_dest_area",
-            "CP Setup: Create destination directory 'cp_test_dest_area'"
-        );
+        // Go into initial directory
+        await this._runCommand("cd ~/Documents");
+        console.log("Current directory: ~/Documents");
+        await this._runCommand("ls"); // Show initial contents
 
-        // Verify initial state
-        await this._runCommand("ls Documents", "CP Setup: List contents of source 'Documents'");
-        await this._runCommand(
-            "ls cp_test_dest_area",
-            "CP Setup: List destination directory (should be empty)"
-        );
+        // --- SOURCE: Single Directory ---
+        console.log("\n--- Testing Single Directory Source ---");
 
-        // --- Test Cases ---
+        // Test 1: No parameters (should typically result in an error)
+        console.log("\nTest 1: cp (no parameters)");
+        await this._runCommand("cp");
 
-        // Test 1: Copy an existing file to a new file name in the destination area
-        await this._runCommand(
-            "cp Documents/resume.txt cp_test_dest_area/resume_copy.txt",
-            "CP Test 1: Copy '~/Documents/resume.txt' to '~/cp_test_dest_area/resume_copy.txt'"
-        );
-        await this._runCommand(
-            "ls cp_test_dest_area",
-            "CP Test 1: Verify 'resume_copy.txt' exists in destination"
-        );
-        await this._runCommand(
-            "cat cp_test_dest_area/resume_copy.txt",
-            "CP Test 1: Verify 'resume_copy.txt' content is the same"
-        );
+        // Test 2: Non-recursive directory copy to existing directory (should fail)
+        // Standard 'cp' requires -r or -R for directories.
+        console.log("\nTest 2: cp project_files .. (non-recursive dir to existing dir)");
+        await this._runCommand("cp project_files .."); // Target: ~/
 
-        // Test 2: Copy an existing file into the destination directory
-        await this._runCommand(
-            "cp Documents/notes.txt cp_test_dest_area/",
-            "CP Test 2: Copy '~/Documents/notes.txt' into '~/cp_test_dest_area/'"
-        );
-        await this._runCommand(
-            "ls cp_test_dest_area",
-            "CP Test 2: Verify 'notes.txt' copied into destination"
-        );
+        // Test 3: Non-recursive directory copy to existing file (should fail)
+        console.log("\nTest 3: cp project_files resume.txt (non-recursive dir to existing file)");
+        await this._runCommand("cp project_files resume.txt");
 
-        // Test 3: Attempt to copy an existing directory without the recursive flag (expect error)
-        await this._runCommand(
-            "cp Documents/project_files cp_test_dest_area/",
-            "CP Test 3: Attempt copy directory '~/Documents/project_files' without -r (expect error)"
-        );
-        // Verify destination hasn't changed unexpectedly
-        await this._runCommand(
-            "ls cp_test_dest_area",
-            "CP Test 3: Verify destination after failed directory copy"
-        );
+        // Test 4: Recursive directory copy to non-existent destination
+        // This should create 'project_files_copy' and copy contents into it.
+        console.log("\nTest 4: cp -r project_files project_files_copy (recursive dir to new dir)");
+        await this._runCommand("cp -r project_files project_files_copy");
+        await this._runCommand("ls"); // Verify 'project_files_copy' exists
 
-        // Test 4: Copy an existing directory recursively into the destination directory
-        // It should create 'project_files' inside 'cp_test_dest_area'
-        await this._runCommand(
-            "cp -r Documents/project_files cp_test_dest_area/",
-            "CP Test 4: Copy directory '~/Documents/project_files' recursively into '~/cp_test_dest_area/'"
-        );
-        await this._runCommand(
-            "ls cp_test_dest_area",
-            "CP Test 4: Verify 'project_files' directory exists in destination"
-        );
-        await this._runCommand(
-            "ls cp_test_dest_area/project_files",
-            "CP Test 4: Verify contents (README.md, config.json) of recursively copied directory"
-        );
+        // --- SOURCE: Single File ---
+        console.log("\n--- Testing Single File Source ---");
 
-        // Test 5: Copy multiple existing files into the destination directory
-        await this._runCommand(
-            "cp Documents/resume.txt Pictures/Photos/vacation/beach.jpg cp_test_dest_area/",
-            "CP Test 5: Copy multiple files ('resume.txt', 'beach.jpg') to '~/cp_test_dest_area/'"
-        );
-        await this._runCommand(
-            "ls cp_test_dest_area",
-            "CP Test 5: Verify 'resume.txt' and 'beach.jpg' exist in destination"
-        );
+        // Test 5: File to non-existent file (creates a copy)
+        console.log("\nTest 5: cp resume.txt resume_copy.txt (file to new file)");
+        await this._runCommand("cp resume.txt resume_copy.txt");
+        await this._runCommand("ls"); // Verify 'resume_copy.txt' exists
 
-        // Test 6: Copy a hidden file
-        await this._runCommand(
-            "cp .gitconfig cp_test_dest_area/gitconfig_copy",
-            "CP Test 6: Copy hidden file '~/.gitconfig' to '~/cp_test_dest_area/gitconfig_copy'"
-        );
-        await this._runCommand(
-            "ls cp_test_dest_area",
-            "CP Test 6: Verify 'gitconfig_copy' exists in destination"
-        );
+        // Test 6: File to existing file (overwrites)
+        // Might want confirmation in interactive mode, but usually overwrites in scripts.
+        console.log("\nTest 6: cp resume.txt notes.txt (file to existing file)");
+        await this._runCommand("cp resume.txt notes.txt"); // Overwrites notes.txt
 
-        // --- Error Conditions ---
+        // Test 7: File to existing directory (copies file into directory)
+        console.log("\nTest 7: cp project_ideas.txt project_files (file to existing dir)");
+        await this._runCommand("cp project_ideas.txt project_files");
+        await this._runCommand("ls project_files"); // Verify 'project_ideas.txt' is inside
 
-        // Test 7: Source does not exist
-        await this._runCommand(
-            "cp non_existent_source.txt cp_test_dest_area/",
-            "CP Test 7: Attempt copy non-existent source file (expect error)"
-        );
+        // --- SOURCE: Multiple Sources ---
+        console.log("\n--- Testing Multiple Sources ---");
 
-        // Test 8: Destination path is invalid (parent directory does not exist)
-        await this._runCommand(
-            "cp Documents/resume.txt non_existent_dest_dir/resume_copy.txt",
-            "CP Test 8: Attempt copy to invalid destination path (expect error)"
-        );
+        // Test 8: Multiple files to existing directory (valid)
+        // Copies resume.txt and notes.txt into project_files_copy
+        console.log("\nTest 8: cp resume.txt notes.txt project_files_copy (multiple files to existing dir)");
+        await this._runCommand("cp resume.txt notes.txt project_files_copy");
+        await this._runCommand("ls project_files_copy"); // Verify files are inside
 
-        // Test 9: Attempt to copy a directory onto an existing file path
-        // Setup: create a target file first
-        await this._runCommand(
-            "touch cp_test_dest_area/target_file.txt",
-            "CP Test 9 (Setup): Create target file 'target_file.txt'"
-        );
-        await this._runCommand(
-            "cp -r Documents/project_files cp_test_dest_area/target_file.txt",
-            "CP Test 9: Attempt copy directory onto existing file (expect error)"
-        );
-        // Verify the target file wasn't wrongly overwritten or removed
-        await this._runCommand(
-            "ls cp_test_dest_area",
-            "CP Test 9: Verify 'target_file.txt' still exists after failed copy"
-        );
+        // Test 9: Multiple files to non-existent directory (invalid)
+        // 'cp' requires the target directory to exist when copying multiple files.
+        console.log("\nTest 9: cp resume.txt notes.txt nonexistent_dir (multiple files to non-existent dir)");
+        await this._runCommand("cp resume.txt notes.txt nonexistent_dir");
 
-        // --- Cleanup ---
-        console.log("\n--- CP Cleanup ---");
-        // Go back home just in case a cd happened or test failed mid-operation
-        await this._runCommand("cd ~", "CP Cleanup: Go back to home directory");
-        // Remove the destination directory and all its contents
-        await this._runCommand(
-            "rm -r cp_test_dest_area",
-            "CP Cleanup: Remove the destination test directory 'cp_test_dest_area'"
-        );
-        await this._runCommand("ls", "CP Cleanup: Final listing of home directory");
+        // Test 10: Multiple files where the last argument is a file (invalid)
+        // When more than two arguments are given, the last MUST be a directory.
+        console.log("\nTest 10: cp resume.txt notes.txt project_ideas.txt (multiple files, target is file)");
+        await this._runCommand("cp resume.txt notes.txt project_ideas.txt");
 
-        console.log("===== CP Testing Finished =====");
+        // Test 11: Multiple files (one non-existent) to existing directory
+        // Should copy the existing file and report an error for the non-existent one.
+        console.log("\nTest 11: cp resume.txt nonexistent_file.txt project_files_copy (one non-existent source)");
+        await this._runCommand("cp resume.txt nonexistent_file.txt project_files_copy");
+        await this._runCommand("ls project_files_copy"); // Verify resume.txt was copied again (or overwritten)
+
+        // Test 12: Mix of file and directory (no -r) to existing directory (invalid for dir)
+        // Should copy the file but fail to copy the directory without -r.
+        console.log("\nTest 12: cp resume.txt project_files .. (mix file/dir without -r to existing dir)");
+        await this._runCommand("cp resume.txt project_files .."); // Target: ~/
+        await this._runCommand("ls .."); // Check if resume.txt is in ~/
+
+        // Test 13: Mix of file and directory (with -r) to existing directory (valid)
+        console.log("\nTest 13: cp -r resume_copy.txt project_files .. (mix file/dir with -r to existing dir)");
+        await this._runCommand("cp -r resume_copy.txt project_files .."); // Target: ~/
+        await this._runCommand("ls .."); // Check if resume_copy.txt and project_files are in ~/
+        await this._runCommand("ls ../project_files"); // Check contents of copied directory
+
+        // Setup for next tests: create another directory
+        await this._runCommand("mkdir ../another_dir"); // Create a directory in ~/
+
+        // Test 14: Multiple directories (no -r) to existing directory (invalid)
+        // Fails because -r is required for directories.
+        console.log("\nTest 14: cp project_files project_files_copy ../another_dir (multiple dirs without -r)");
+        await this._runCommand("cp project_files project_files_copy ../another_dir");
+        await this._runCommand("ls ../another_dir"); // Should be empty or unchanged
+
+        // Test 15: Multiple directories (with -r) to existing directory (valid)
+        console.log("\nTest 15: cp -r project_files project_files_copy ../another_dir (multiple dirs with -r)");
+        await this._runCommand("cp -r project_files project_files_copy ../another_dir");
+        await this._runCommand("ls ../another_dir"); // Verify both dirs were copied inside
+        await this._runCommand("ls ../another_dir/project_files");
+        await this._runCommand("ls ../another_dir/project_files_copy");
+
+
+        // Final state check
+        console.log("\n--- Final State Check ---");
+        await this._runCommand("cd .."); // Go back to ~/
+        // List individual directories:
+        await this._runCommand("ls");
+        await this._runCommand("ls Documents");
+        await this._runCommand("ls Pictures");
+        await this._runCommand("ls another_dir");
+
+
+        console.log("\n--- cp command tests finished ---");
     }
 
     /**

@@ -9,13 +9,12 @@
 ==================================================================================================*/
 
 /*  Class Definition
-***************************************************************************************************/
+ **************************************************************************************************/
 export class OutputLine {
     constructor(type, content) {
         this.type = type;
         this.spans = [];
-        if (type && content)
-            this.addSpan(type, content);
+        if (type && content) this.addSpan(type, content);
     }
 
     addSpan(type, content) {

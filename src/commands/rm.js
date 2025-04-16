@@ -38,7 +38,7 @@ export class RmCommand extends Command {
     static supportedArgs = ["r"]; // Recursive flag (common: f - force)
 
     /* Constructor
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Initializes a rm command instance.
      * @param {Object} data - Object containing required dependencies.
@@ -50,7 +50,7 @@ export class RmCommand extends Command {
     }
 
     /* Public Methods
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Removes files or directories specified in the arguments.
      * @param {string[]} args - Array of command arguments (switches and file/dir paths).

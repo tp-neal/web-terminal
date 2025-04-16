@@ -28,7 +28,7 @@ export class EchoCommand extends Command {
     static supportedArgs = [];
 
     /* Constructor
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Initializes an echo command instance.
      * @param {Object} data - Object containing required dependencies
@@ -38,7 +38,7 @@ export class EchoCommand extends Command {
     }
 
     /* Public Methods
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Returns a string for the terminal to display based on provided arguments.
      * @param {string[]} args - Array of command arguments (switches and text parts).

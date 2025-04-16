@@ -26,7 +26,7 @@ export class CdCommand extends Command {
     static usage = "cd [directory]";
 
     /* Constructor
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Initializes a cd command instance.
      * @param {Object} data - Object containing required dependencies.
@@ -38,7 +38,7 @@ export class CdCommand extends Command {
     }
 
     /* Public Methods
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Navigates the filesystem's current working directory (cwd).
      * @param {string[]} args - Array containing the target directory path at args[0].

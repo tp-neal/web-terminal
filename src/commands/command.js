@@ -9,24 +9,24 @@
 ==================================================================================================*/
 
 /*  Class Definition
-***************************************************************************************************/
+ **************************************************************************************************/
 /**
  * @class Command
  * @brief Base class for all terminal commands
  */
 export class Command {
-    static commandName = '';
-    static description = '';
-    static usage = '';
+    static commandName = "";
+    static description = "";
+    static usage = "";
     static supportedArgs = [];
-    
+
     /**
      * @brief Base constructor for command classes
      */
     constructor() {
         // Base constructor
     }
-    
+
     /**
      * @brief Execute method to be implemented by all subclasses
      * @param {string[]} args Array of command arguments

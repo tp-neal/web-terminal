@@ -42,7 +42,7 @@ export class MvCommand extends Command {
     static supportedArgs = [];
 
     /* Constructor
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Initializes a mv command instance.
      * @param {Object} data - Object containing required dependencies.
@@ -54,7 +54,7 @@ export class MvCommand extends Command {
     }
 
     /* Public Methods
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Moves or renames files and directories from source(s) to target.
      * @param {string[]} args - Array of command arguments (switches, sources, target).

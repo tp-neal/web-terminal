@@ -17,9 +17,10 @@ import { Filesystem } from "./fs-management/filesystem.js";
 import { OutputLine } from "./util/output-line.js";
 import { TestSuite } from "./testing/testsuit.js";
 import { DOMHelper, protectedKeyCombination } from "./util/dom-util.js";
+import { FSUtil } from "./fs-management/fs-util.js";
 
 /*  Class Definition
- ***************************************************************************************************/
+ **************************************************************************************************/
 /**
  * @class Terminal
  * @brief Main terminal class that manages the overall terminal functionality
@@ -60,6 +61,7 @@ export class Terminal {
         this.createNewCommandLine(); // call after commandHistory constructor
 
         const testSuite = new TestSuite(this);
+        
     }
 
     run(command) {
@@ -69,7 +71,7 @@ export class Terminal {
     }
 
     /*  Initialization
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Initializes the terminal
      * @return {boolean} True on success
@@ -84,7 +86,7 @@ export class Terminal {
     }
 
     /*  Event Handling
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Handles keydown events for the terminal
      * @param {KeyboardEvent} event The keydown event
@@ -172,13 +174,11 @@ export class Terminal {
     }
 
     /*  Command Management
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Executes the current command entered in the command line
      */
     executeCommand() {
-        console.log(`Executing command: ${this.commandLine.getFullText()}`);
-
         // Get command text without caret
         const commandText = this.commandLine.getFullText();
 
@@ -240,7 +240,7 @@ export class Terminal {
     }
 
     /*  Display Manipulation
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Creates a new command line and appends it to the terminal display
      */
@@ -263,11 +263,11 @@ export class Terminal {
 
     addLinesToTerminal(lines) {
         for (const line of lines) {
-            this.addLinetoTerminal(line);
+            this.addLineToTerminal(line);
         }
     }
 
-    addLinetoTerminal(line) {
+    addLineToTerminal(line) {
         const li = DOMHelper.createOutputLineElement(line);
         this.terminalDisplay.appendChild(li);
     }
@@ -283,6 +283,6 @@ export class Terminal {
      * @brief Prints version information to the terminal
      */
     printVersionInfo() {
-        this.addLinetoTerminal(new OutputLine("general", CONFIG.VERSION_INFO));
+        this.addLineToTerminal(new OutputLine("general", CONFIG.VERSION_INFO));
     }
 }

@@ -29,7 +29,7 @@ export class LsCommand extends Command {
     static supportedArgs = ["a"];
 
     /*  Constructor
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Initializes an ls command instance
      * @param {Object} data Object containing required dependencies
@@ -40,7 +40,7 @@ export class LsCommand extends Command {
     }
 
     /*  Public Methods
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Lists contents of the current working directory.
      * @param {string[]} args - Array of provided command arguments.
@@ -49,6 +49,7 @@ export class LsCommand extends Command {
      * @property {OutputLine[]} return.lines - Array of lines to be ouptput to the terminal.
      */
     execute(args) {
+        // --- 0. Variable Initialization ---
         const lines = []; // container for all messages to print to the terminal
 
         // --- 1. Argument Parsing ---
@@ -69,34 +70,31 @@ export class LsCommand extends Command {
         const showHidden = switches.includes("a");
 
         // --- 2. Validate Source ---
-        const sourcePath =
+        const targetPath =
             params && params.length > 0 ? params[0] : this.filesystem.cwd.getFilePath();
 
-        const {
-            // gather information on the source path
-            status: srcRes,
-            targetNode: srcNode,
-            parentNode: srcParent, // Not directly used here but part of the standard return
-            targetName: srcName, // Not directly used here but part of the standard return
-            errors: srcResErrors,
-        } = this.filesystem.resolvePath(sourcePath, {
-            createIntermediary: false, // we are looking for an existing file/directory
-            targetMustHaveType: null, // source can be a file or directory
+        const targetResolution = this.filesystem.resolvePath(targetPath, {
+            createIntermediary: false, // cp doesn't create intermediate dirs for the target
+            targetMustExist: false
         });
+        const target = {
+            status: targetResolution.status,
+            node: targetResolution.targetNode,
+            parent: targetResolution.parentNode,
+            fullname: targetResolution.targetName,
+            errors: targetResolution.errors,
+        };
 
         // If the source wansn't found, push errors encounterd during traversal, and exit
-        if (srcRes !== RESOLUTION.FOUND) {
-            for (const error of srcResErrors) {
-                lines.push(new OutputLine(error.type, error.content));
-            }
-            return { type: "output", lines }; // single source means we return early
+        if (target.status !== RESOLUTION.FOUND) {
+            lines.push(...target.errors.map((e) => new OutputLine(e.type, e.content)));
+            return { type: "output", lines };
         }
 
-        // --- 3. Gather List Contents ---
-        // Scenario: target is a directory
-        if (srcNode.isDirectory) {
+        // --- 3. Handle target based on type ---
+        if (target.node.isDirectory) {
             // Add each of the nodes children to output
-            for (const [childName, childNode] of srcNode.children) {
+            for (const [childName, childNode] of target.node.children) {
                 if (!childNode.isHidden || showHidden) {
                     if (childNode.isDirectory) {
                         lines.push(new OutputLine("directory", childNode.getFullName()));
@@ -109,7 +107,7 @@ export class LsCommand extends Command {
         // Scenario: target is a file
         else {
             // Just add the target file to output
-            lines.push(new OutputLine("file", srcNode.getFullName()));
+            lines.push(new OutputLine("file", target.node.getFullName()));
         }
 
         // --- 4. Return Output ---

@@ -9,13 +9,12 @@
 ==================================================================================================*/
 
 /*  Class Definition
-***************************************************************************************************/
+ **************************************************************************************************/
 /**
  * @class ArgParser
  * @brief Utility class for parsing command arguments from string input
  */
 export class ArgParser {
-
     /**
      * @brief Parses a command string into tokens, handling quotes and escaped characters
      * @param {string} string The raw input string to parse
@@ -27,7 +26,7 @@ export class ArgParser {
         // - Escaped characters (\, ", ')
         // - Spaces outside quotes
         const tokenRegex = /(?:"([^"\\]*(?:\\.[^"\\]*)*)"|'([^'\\]*(?:\\.[^'\\]*)*)'|([^\s]+))/g;
-        
+
         const tokens = [];
         let match;
 
@@ -36,7 +35,7 @@ export class ArgParser {
             const token = match[1] || match[2] || match[3];
             if (token !== undefined) {
                 // Replace escaped quotes and spaces (e.g., \" → ", \  → space)
-                tokens.push(token.replace(/\\(.)/g, '$1'));
+                tokens.push(token.replace(/\\(.)/g, "$1"));
             }
         }
 
@@ -53,11 +52,9 @@ export class ArgParser {
         let params = [];
 
         for (const arg of args) {
-            if (arg[0] === '-') {
-                if (arg.length >= 2 && arg[1] === '-')
-                    switches.push(arg.slice(2));
-                else
-                    switches.push(arg.slice(1));
+            if (arg[0] === "-") {
+                if (arg.length >= 2 && arg[1] === "-") switches.push(arg.slice(2));
+                else switches.push(arg.slice(1));
             } else {
                 params.push(arg);
             }

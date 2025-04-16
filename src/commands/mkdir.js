@@ -12,6 +12,7 @@ import { ArgParser } from "../util/arg-parser.js";
 import { Command } from "./command.js";
 import { ERROR_MESSAGES } from "../config.js";
 import { RESOLUTION } from "../fs-management/filesystem.js";
+import { FSNode } from "../fs-management/fs-node.js";
 import { FSUtil } from "../fs-management/fs-util.js";
 import { OutputLine } from "../util/output-line.js";
 
@@ -97,7 +98,7 @@ export class MkdirCommand extends Command {
                 errors,
             } = this.filesystem.resolvePath(path, {
                 createIntermediary: createIntermediary, // Pass the -p flag status
-                targetMustHaveType: null, // Doesn't matter, will handle existant and nonexistant
+                targetMustHaveType: null, // Doesn't matter, will handle existent and nonexistent
             });
 
             // --- 3. Handle Resolution Results ---

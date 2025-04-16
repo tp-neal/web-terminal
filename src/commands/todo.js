@@ -28,7 +28,7 @@ export class TodoCommand extends Command {
     static supportedArgs = [];
 
     /* Constructor
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Initializes a todo command instance.
      * @param {Object} data - Object containing required dependencies (none needed for todo).
@@ -38,7 +38,7 @@ export class TodoCommand extends Command {
     }
 
     /* Public Methods
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Returns the configured TODO list string.
      * @param {string[]} args - Array of command arguments (should be empty).

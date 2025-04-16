@@ -27,7 +27,7 @@ import { TreeCommand } from "../commands/tree.js";
 import { ERROR_MESSAGES } from "../config.js";
 
 /*  Class Definition
- ***************************************************************************************************/
+ **************************************************************************************************/
 /**
  * @class CommandRegistry
  * @brief Manages available terminal commands and their execution

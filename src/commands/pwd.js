@@ -27,7 +27,7 @@ export class PwdCommand extends Command {
     static usage = "pwd";
 
     /* Constructor
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Initializes a pwd command instance.
      * @param {Object} data - Object containing required dependencies.
@@ -39,7 +39,7 @@ export class PwdCommand extends Command {
     }
 
     /* Public Methods
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Retrieves and returns the full path of the current working directory.
      * @param {string[]} args - Array of command arguments (should be empty).

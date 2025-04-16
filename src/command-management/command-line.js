@@ -12,7 +12,7 @@
 import { CONFIG } from "../config.js";
 
 /*  Caret Class Definition
- ***************************************************************************************************/
+ **************************************************************************************************/
 /**
  * @class Caret
  * @brief Represents the text cursor for the terminal interface
@@ -29,7 +29,7 @@ class Caret {
 }
 
 /*  CommandLine Class Definition
- ***************************************************************************************************/
+ **************************************************************************************************/
 /**
  * @class CommandLine
  * @brief Handles command input including text manipulation and caret position
@@ -67,7 +67,7 @@ export class CommandLine {
     }
 
     /*  DOM Manipulation
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Creates a new command line DOM element
      * @return {Object} Object containing the created DOM elements
@@ -131,7 +131,7 @@ export class CommandLine {
     }
 
     /*  Text Modification
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Inserts a character into the current command line before the caret
      * @param {string} key Character to insert
@@ -165,7 +165,7 @@ export class CommandLine {
     }
 
     /*  Caret Movement
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Updates the position of the caret within the command text, moving it left or right
      * @param {string} direction Direction of caret movement ("left" or "right")
@@ -190,7 +190,7 @@ export class CommandLine {
     }
 
     /*  Caret Visibility
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Toggles caret visibility. Used with setInterval() to periodically blink the caret
      */
@@ -215,7 +215,7 @@ export class CommandLine {
     }
 
     /*  Text Return
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Gets the full text content of the command line
      * @return {string} Combined text from both sides of the caret
@@ -225,7 +225,7 @@ export class CommandLine {
     }
 
     /*  Text Updating
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Sets the text to the left of the caret in the command line
      * @param {string} left Text for the left side to be set to
@@ -251,7 +251,7 @@ export class CommandLine {
     }
 
     /*  Event Listening
-     ***********************************************************************************************/
+     **********************************************************************************************/
     /**
      * @brief Defines and adds a key capture event listener to the command line element
      */
