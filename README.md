@@ -4,8 +4,6 @@ A front-end, interactive terminal emulator created with vanilla JavaScript,
 HTML, and CSS. This project simulates a Unix-like command-line interface in the
 browser, complete with a virtual file system and a suite of standard commands.
 
-![Screenshot of the Null-Terminal project](./tp-neal/web-terminal/web-terminal-39715d173bc6d57e61910f14403c72cd4fc42a70/assets/null-term.png)
-
 ---
 
 ## Features
@@ -41,26 +39,7 @@ The following commands are currently supported:
 
 ---
 
-## Getting Started
+## How to Use
 
 To open the web-terminal simulator, simply click on the pages link on the right
 side of this page.
-
-If you would like to run it locally, you may do the following after downloading
-the source code.
-
-```bash
-# Navigate to the source directory
-cd tp-neal/web-terminal/web-terminal-39715d173bc6d57e61910f14403c72cd4fc42a70/src/
-
-# Open the main HTML file
-# (On macOS)
-open index.html
-# (On Windows)
-start index.html
-# (On Linux)
-xdg-open index.html
-
-## How It Works
-
-
