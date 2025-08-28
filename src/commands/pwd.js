@@ -2,7 +2,7 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: pwd.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Contains implementation of the interpreter's pwd command
@@ -10,8 +10,7 @@
 
 import { Command } from "./command.js";
 import { OutputLine } from "../util/output-line.js";
-import { ArgParser } from "../util/arg-parser.js"; // Although unused, good practice
-import { ERROR_MESSAGES } from "../config.js"; // Added for consistency
+import { CommandErrors } from "../util/error_messages.js";
 
 /*==================================================================================================
     Class Definition: [PwdCommand]
@@ -23,8 +22,9 @@ import { ERROR_MESSAGES } from "../config.js"; // Added for consistency
  */
 export class PwdCommand extends Command {
     static commandName = "pwd";
-    static description = "Print name of current/working directory"; // Slightly more standard description
+    static description = "Print name of current/working directory";
     static usage = "pwd";
+    
 
     /* Constructor
      **********************************************************************************************/
@@ -47,24 +47,17 @@ export class PwdCommand extends Command {
      * @property {string} return.type - Always 'output'.
      * @property {OutputLine[]} return.lines - Array containing a single OutputLine with the path.
      */
-    execute(args) {
+    execute(switches, params) {
         const lines = []; // Container for the output line
 
-        // --- 1. Argument Parsing & Validation ---
-        const { switches, params } = ArgParser.argumentSplitter(args);
-
-        // Check for any arguments (pwd doesn't take any)
-        if (switches.length > 0 || params.length > 0) {
-            lines.push(new OutputLine("error", ERROR_MESSAGES.TOO_MANY_ARGS));
+        // Check argument count - takes no arguments
+        if (params > 0) {
+            lines.push(OutputLine.error(CommandErrors.TOO_MANY_ARGS));
+            lines.push(OutputLine.hint(`usage: ${this.constructor.usage}`));
             return { type: "output", lines };
         }
 
-        // --- 2. Get Current Path ---
-        // Get the full path from the filesystem's current working directory node
-        const currentPath = this.filesystem.cwd.getFilePath();
-        lines.push(new OutputLine("general", currentPath));
-
-        // --- 3. Return Output ---
+        lines.push(OutputLine.general(this.filesystem.cwd.getFilePath()));
         return { type: "output", lines };
     }
 }

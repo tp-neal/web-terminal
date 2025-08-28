@@ -2,15 +2,14 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: cat.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Contains implementation of the interpreter's cat command
 ==================================================================================================*/
 
 import { Command } from "./command.js";
-import { ArgParser } from "../util/arg-parser.js";
-import { ERROR_MESSAGES } from "../config.js"; // Added for consistency, though not used directly yet
+import { CommandErrors } from "../util/error_messages.js";
 import { OutputLine } from "../util/output-line.js";
 import { RESOLUTION } from "../fs-management/filesystem.js";
 
@@ -34,8 +33,7 @@ export class CatCommand extends Command {
     static commandName = "cat";
     static description = "Display contents of a file";
     static usage = "cat [switches] file...";
-    static supportedArgs = [];
-
+    
     /* Constructor
      **********************************************************************************************/
     /**
@@ -57,62 +55,47 @@ export class CatCommand extends Command {
      * @property {string} return.type - Always 'output'.
      * @property {OutputLine[]} return.lines - Array of lines containing file content or errors.
      */
-    execute(args) {
+    execute(switches, params) {
         const lines = []; // Container for all messages to print to the terminal
 
-        // --- 1. Argument Parsing ---
-        const { switches, params } = ArgParser.argumentSplitter(args);
-
-        // Validate switches if any are supported and implemented
-        for (const switchName of switches) {
-            if (!this.constructor.supportedArgs.includes(switchName)) {
-                lines.push(new OutputLine("error", ERROR_MESSAGES.INVALID_SWITCH(switchName)));
-                return { type: "output", lines };
-            }
-        }
-
-        // Ensure at least one file parameter is provided
+        // Check argument count - takes one or more sources to display output
         if (params.length === 0) {
-            lines.push(new OutputLine("error", ERROR_MESSAGES.TOO_FEW_ARGS));
-            lines.push(new OutputLine("hint", `usage: ${this.constructor.usage}`));
+            lines.push(OutputLine.error(CommandErrors.TOO_FEW_ARGS));
+            lines.push(OutputLine.hint(`usage: ${this.constructor.usage}`));
             return { type: "output", lines };
         }
 
-        // --- 2. Process File Paths ---
+        // Process each filepath individually
         for (const filepath of params) {
-            // Attempt to resolve the path to the file
-            const {
+            const {  // Attempt to resolve the path to the file
                 status,
                 targetNode,
-                parentNode, // Not directly used here but part of the standard return
-                targetName, // Not directly used here but part of the standard return
+                parentNode,
+                targetName,
                 errors,
             } = this.filesystem.resolvePath(filepath, {
                 createIntermediary: false, // Don't create missing parts
-                targetMustHaveType: null, // Target can be anything initially
+                targetMustExist: true,     // To display contents of a file it must exist
             });
 
-            // --- 3. Handle Resolution Results ---
-            // If file/directory wasn't found, push errors returned from resolution
+            // Handle critical errors (e.g. not found)
             if (status !== RESOLUTION.FOUND) {
-                for (const error of errors) {
-                    lines.push(new OutputLine(error.type, error.content));
-                }
-                continue; // Move to the next filepath
+                lines.push(...errors.map((e) => new OutputLine(e.type, e.content)));
+                continue; // Skip filepath
+            }
+            
+            // Attempt to retrieve file content
+            let fileContent;
+            try { 
+                fileContent = targetNode.getContent(); // if file, content will never be null/undef
+            } catch (targetIsDirectory) {
+                lines.push(OutputLine.error(targetIsDirectory.message));
+                continue;
             }
 
-            // If the target is a directory, push a specific error message
-            if (targetNode.isDirectory) {
-                lines.push(new OutputLine("error", CAT_ERRORS.CANNOT_READ_DIRECTORY));
-                continue; // Move to the next filepath
-            }
-
-            // If the target is a file, push its contents to output
-            const fileContent = targetNode.getContent() || ""; // Handle null content
-            lines.push(new OutputLine("general", fileContent));
+            lines.push(OutputLine.general(fileContent));
         }
 
-        // --- 4. Return Output ---
         return { type: "output", lines };
     }
 }

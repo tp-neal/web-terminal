@@ -17,6 +17,20 @@ export class OutputLine {
         if (type && content) this.addSpan(type, content);
     }
 
+    // TODO: add output line method for returning colors
+
+    static error(content) {
+        return new OutputLine("error", content);
+    }
+
+    static hint(content) {
+        return new OutputLine("hint", content);
+    }
+
+    static general(content) {
+        return new OutputLine("general", content);
+    }
+
     addSpan(type, content) {
         this.spans.push({ type, content });
     }

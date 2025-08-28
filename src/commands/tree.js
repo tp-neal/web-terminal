@@ -2,17 +2,17 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: tree.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Contains implementation of the interpreter's tree command
 ==================================================================================================*/
 
 import { Command } from "./command.js";
-import { OutputLine } from "../util/output-line.js"; // Import OutputLine
-import { ArgParser } from "../util/arg-parser.js"; // Although unused, good practice
-import { ERROR_MESSAGES } from "../config.js"; // Added for consistency
-import { RESOLUTION } from "../fs-management/filesystem.js"; // Import RESOLUTION if path resolution is added
+import { OutputLine } from "../util/output-line.js";
+
+import { RESOLUTION } from "../fs-management/filesystem.js";
+import { CommandErrors } from "../util/error_messages.js";
 
 /*==================================================================================================
     Class Definition: [TreeCommand]
@@ -24,9 +24,8 @@ import { RESOLUTION } from "../fs-management/filesystem.js"; // Import RESOLUTIO
  */
 export class TreeCommand extends Command {
     static commandName = "tree";
-    static description = "List contents of directories in a tree-like format"; // Standard description
-    static usage = "tree [directory]"; // Can optionally take a starting directory
-    static supportedArgs = [];
+    static description = "List contents of directories in a tree-like format";
+    static usage = "tree [directory]";
 
     /* Constructor
      **********************************************************************************************/
@@ -49,24 +48,13 @@ export class TreeCommand extends Command {
      * @property {string} return.type - Always 'output'.
      * @property {OutputLine[]} return.lines - Array of OutputLine objects representing the tree structure.
      */
-    execute(args) {
+    execute(switches, params) {
         const lines = []; // Container for the tree output lines
-
-        // --- 1. Argument Parsing & Validation ---
-        const { switches, params } = ArgParser.argumentSplitter(args);
-
-        // Validate switches if any are implemented
-        for (const switchName of switches) {
-            if (!this.constructor.supportedArgs.includes(switchName)) {
-                lines.push(new OutputLine("error", ERROR_MESSAGES.INVALID_SWITCH(switchName)));
-                return { type: "output", lines };
-            }
-        }
 
         // Tree takes 0 or 1 argument (starting directory)
         if (params.length > 1) {
-            lines.push(new OutputLine("error", ERROR_MESSAGES.TOO_MANY_ARGS));
-            lines.push(new OutputLine("hint", `usage: ${this.constructor.usage}`));
+            lines.push(OutputLine.error(CommandErrors.TOO_MANY_ARGS));
+            lines.push(OutputLine.hint(`usage: ${this.constructor.usage}`));
             return { type: "output", lines };
         }
 

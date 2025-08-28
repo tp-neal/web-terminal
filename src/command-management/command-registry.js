@@ -2,13 +2,14 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: command-registry.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Contains implementation of CommandRegistry class which is a registry of all commands that
           have been implemented for usage in the terminal. Acts as a hub for executing commands.
 ==================================================================================================*/
 
+import { ArgParser } from "../util/arg-parser.js";
 import { Filesystem } from "../fs-management/filesystem.js";
 import { OutputLine } from "../util/output-line.js";
 import { CatCommand } from "../commands/cat.js";
@@ -16,6 +17,7 @@ import { CdCommand } from "../commands/cd.js";
 import { ClearCommand } from "../commands/clear.js";
 import { CpCommand } from "../commands/cp.js";
 import { EchoCommand } from "../commands/echo.js";
+import { HelpCommand } from "../commands/help.js";
 import { LsCommand } from "../commands/ls.js";
 import { MkdirCommand } from "../commands/mkdir.js";
 import { MvCommand } from "../commands/mv.js";
@@ -24,7 +26,24 @@ import { RmCommand } from "../commands/rm.js";
 import { TodoCommand } from "../commands/todo.js";
 import { TouchCommand } from "../commands/touch.js";
 import { TreeCommand } from "../commands/tree.js";
-import { ERROR_MESSAGES } from "../config.js";
+import { CommandErrors } from "../util/error_messages.js";
+
+const supportedCommands = {
+    cat: CatCommand,
+    cd: CdCommand,
+    clear: ClearCommand,
+    cp: CpCommand,
+    echo: EchoCommand,
+    help: HelpCommand,
+    ls: LsCommand,
+    mkdir: MkdirCommand,
+    mv: MvCommand,
+    pwd: PwdCommand,
+    rm: RmCommand,
+    todo: TodoCommand,
+    touch: TouchCommand,
+    tree: TreeCommand,
+};
 
 /*  Class Definition
  **************************************************************************************************/
@@ -33,30 +52,16 @@ import { ERROR_MESSAGES } from "../config.js";
  * @brief Manages available terminal commands and their execution
  */
 export class CommandRegistry {
+
     /**
      * @brief Creates a new command registry with specified commands
-     * @param {Object} terminal Reference to the terminal instance
+     * @param {Terminal} terminal Reference to the terminal instance
      * @param {Filesystem} filesystem Reference to the filesystem instance
-     * @param {Object} supportedCommands Map of command names to command classes
      */
     constructor(terminal, filesystem) {
         this.terminal = terminal;
         this.filesystem = filesystem;
-        this.commands = {
-            cat: CatCommand,
-            cd: CdCommand,
-            clear: ClearCommand,
-            cp: CpCommand,
-            echo: EchoCommand,
-            ls: LsCommand,
-            mkdir: MkdirCommand,
-            mv: MvCommand,
-            pwd: PwdCommand,
-            rm: RmCommand,
-            todo: TodoCommand,
-            touch: TouchCommand,
-            tree: TreeCommand,
-        };
+        this.commands = supportedCommands;
     }
 
     /**
@@ -65,41 +70,57 @@ export class CommandRegistry {
      * @param {class} commandClass Pointer to the class definition the command name refers to
      */
     registerCommand(commandName, commandClass) {
-        // Map the command name to its class definition
         this.commands[commandName] = commandClass;
     }
 
     /**
      * @brief Attempts to execute a command if it exists, and returns its result
      * @param {string} commandName Command to be executed
-     * @param {string[]} args Tokenized arguments that follow the command
+     * @param {string[]} args Tokenized arguments that follow the command, default it to a new array
      * @return {Object} Result object with type and additional information
      */
-    executeCommand(commandName, args) {
+    executeCommand(commandName, args = []) {
         let processedLines = [];
 
-        // Check if command exists
-        if (!this.commands[commandName]) {
-            processedLines.push(
-                new OutputLine("error", `voidsh: ${ERROR_MESSAGES.CMD_NOT_REGISTERED}`)
-            );
-            console.error(`Command '${commandName}' not registered in command regisrty`);
-            return {
-                type: "output",
-                processedLines,
-            };
+        if (!commandName) {
+            throw new Error("Invalid command name passed to command-registry");
         }
 
-        // Create a data object with necessary dependencies for all commands
+        // Check command existance
+        if (!this.commands[commandName]) {
+            processedLines.push(
+                OutputLine.error(`voidsh: ${CommandErrors.CMD_NOT_REGISTERED}`)
+            );
+            return {type: "output", processedLines };
+        }
+
+        // Parse arguments
+        const { switches, params } = ArgParser.argumentSplitter(args);
+
+        // Create object containing dependencies for commands - passed to command constructor
         const data = {
             filesystem: this.filesystem,
+            commandRegistry: this
         };
 
-        // Create instance of new command and invoke it
+        // Create instance of command
         const command = new this.commands[commandName](data);
-        let { type, lines } = command.execute(args);
 
-        // If there are error lines to be output, format them with the command name
+        // Validate switches
+        for (const switchName of switches) {
+            // Here we use the constructor to check for switches, which inherets from Command if empty
+            if (!command.constructor.supportedArgs.includes(switchName)) {
+                lines.push(
+                    OutputLine.error(CommandErrors.INVALID_SWITCH(commandName, switchName))
+                );
+                return { type: "output", lines };
+            }
+        }
+
+        // Invoke command
+        const { type, lines } = command.execute(switches, params);
+
+        // Format returned errors for printing
         if (lines && lines.length > 0) {
             for (const line of lines) {
                 for (const span of line.spans) {

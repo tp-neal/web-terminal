@@ -2,19 +2,19 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: touch.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Contains implementation of the interpreter's touch command
 ==================================================================================================*/
 
-import { ArgParser } from "../util/arg-parser.js";
 import { Command } from "./command.js";
-import { ERROR_MESSAGES } from "../config.js";
+
 import { RESOLUTION } from "../fs-management/filesystem.js";
 import { FSNode } from "../fs-management/fs-node.js";
 import { FSUtil } from "../fs-management/fs-util.js";
 import { OutputLine } from "../util/output-line.js";
+import { CommandErrors, FilesystemErrors } from "../util/error_messages.js";
 
 /*==================================================================================================
     Class Definition: [TouchCommand]
@@ -26,9 +26,8 @@ import { OutputLine } from "../util/output-line.js";
  */
 export class TouchCommand extends Command {
     static commandName = "touch";
-    static description = "Change file timestamps or create empty files"; // More standard desc
+    static description = "Change file timestamps or create empty files";
     static usage = "touch [switches] file...";
-    static supportedArgs = [];
 
     /* Constructor
      **********************************************************************************************/
@@ -51,31 +50,19 @@ export class TouchCommand extends Command {
      * @property {string} return.type - 'output' (only if errors occur), or 'ignore'.
      * @property {OutputLine[]} return.lines - Contains error messages.
      */
-    execute(args) {
+    execute(switches, params) {
         const lines = []; // container for all messages to print to the terminal
 
-        // --- 1. Argument Parsing ---
-        const { switches, params } = ArgParser.argumentSplitter(args);
-
-        // Validate switches
-        for (const switchName of switches) {
-            if (!this.constructor.supportedArgs.includes(switchName)) {
-                lines.push(new OutputLine("error", ERROR_MESSAGES.INVALID_SWITCH(switchName)));
-                return { type: "output", lines };
-            }
-        }
-
-        // Ensure at least one file name is provided
+        // Check argument count - at least one file name must be provided
         if (params.length === 0) {
-            lines.push(new OutputLine("error", ERROR_MESSAGES.TOO_FEW_ARGS));
-            lines.push(new OutputLine("hint", `usage: ${this.constructor.usage}`));
+            lines.push(OutputLine.error(CommandErrors.TOO_FEW_ARGS));
+            lines.push(OutputLine.hint(`usage: ${this.constructor.usage}`));
             return { type: "output", lines };
         }
 
-        // --- 2. Process Each File Path ---
+        // Process each filepath
         for (const path of params) {
-            // Attempt to resolve path
-            const {
+            const { // Resolve path
                 status,
                 targetNode, // The existing file/dir node, or null
                 parentNode, // Parent directory where file should exist/be created
@@ -83,45 +70,42 @@ export class TouchCommand extends Command {
                 errors,
             } = this.filesystem.resolvePath(path, {
                 createIntermediary: false, // Touch doesn't create intermediate directories
-                targetMustHaveType: null, // Target could be file or dir initially
+                targetMustExist: false     // Touch creates new files if they don't yet exist
             });
 
-            // --- 3. Handle Resolution Results ---
-            // If path resolution failed badly (not just missing or found)
-            if (
-                status === RESOLUTION.NOT_FOUND ||
-                status === RESOLUTION.INVALID_PATH ||
-                status === RESOLUTION.NOT_A_DIRECTORY
+            // Handle critical errors during path resolution
+            if (status !== RESOLUTION.FOUND &&
+                status !== RESOLUTION.PARENT_FOUND_TARGET_MISSING
             ) {
                 lines.push(...errors.map((e) => new OutputLine(e.type, e.content)));
                 continue; // Skip to next path
             }
 
-            // Scenario: File/Directory Exists (Update Timestamp)
+            // If the file exists, update timestamp, otherwise create a new file
             if (status === RESOLUTION.FOUND) {
                 targetNode.updateModifiedTime(); // update accessed time
-            }
-            // Scenario: File Does Not Exist (Create New Empty File)
-            else if (status === RESOLUTION.PARENT_FOUND_TARGET_MISSING) {
+            } else {
                 // Make sure the target name is valid for a file
                 const { valid, reasons } = FSUtil.isValidFileName(targetName);
                 if (!valid) {
+                    // If its not valid, return the reasons to user
                     lines.push(
-                        new OutputLine("error", ERROR_MESSAGES.INVALID_FILE_NAME(targetName))
+                        OutputLine.error(FilesystemErrors.INVALID_FILE_NAME(targetName))
                     );
-                    if (reasons) lines.push(new OutputLine("error", reasons));
+                    if (reasons) lines.push(OutputLine.error(reasons));
                     continue; // Skip to next path
                 }
 
                 // Create the new empty file
-                const { name, extension } = FSUtil.parseNameAndExtension(targetName); // Use util to get base name and ext
-                const newFile = new FSNode(name, extension || "txt"); // Default to .txt if no extension
+                // Resolution name consists of both name and extension (e.g textfile.txt)
+                // Therefore, we must seperate these sections
+                const { name, extension } = FSUtil.parseNameAndExtension(targetName);
+                // The FSNode constructor will default to 'txt' if no extension is provided
+                const newFile = new FSNode(name, extension);
                 parentNode.addChild(newFile);
-                // Successfully created, no output line needed on success
             }
         } // End loop through paths
 
-        // --- 4. Return Result ---
         // If errors were encountered, print them, otherwise print nothing
         return {
             type: lines.length > 0 ? "output" : "ignore",

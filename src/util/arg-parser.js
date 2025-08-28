@@ -2,7 +2,7 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: arg-parser.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Contains implementation of ArgParser, which is used to parse/divide command line input.

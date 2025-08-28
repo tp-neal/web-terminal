@@ -2,15 +2,14 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: cp.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Contains implementation of the interpreter's cp command
 ==================================================================================================*/
 
-import { ArgParser } from "../util/arg-parser.js";
 import { Command } from "./command.js";
-import { ERROR_MESSAGES } from "../config.js";
+import { CommandErrors } from "../util/error_messages.js";
 import { RESOLUTION } from "../fs-management/filesystem.js";
 import { OutputLine } from "../util/output-line.js";
 import { FSUtil } from "../fs-management/fs-util.js";
@@ -69,38 +68,30 @@ export class CpCommand extends Command {
      * @property {string} return.type - 'output' (even if only errors), or 'ignore' on success.
      * @property {OutputLine[]} return.lines - Contains error messages or hints.
      */
-    execute(args) {
-        // --- 0. Variable Initialization ---
-        const lines = []; // Container for all messages to print to the terminal
+    execute(switches, params) {
+        const lines = []; // container for all messages to print to the terminal
 
-        // --- 1. Argument Parsing ---
-        const { switches, params } = ArgParser.argumentSplitter(args);
-
-        for (const switchName of switches) {
-            if (!this.constructor.supportedArgs.includes(switchName)) {
-                lines.push(new OutputLine("error", ERROR_MESSAGES.INVALID_SWITCH(switchName)));
-                return { type: "output", lines };
-            }
-        }
-
+        // Check argument count - takes one or more sources and exactly one destination
         if (params.length < 2) {
-            lines.push(new OutputLine("error", ERROR_MESSAGES.TOO_FEW_ARGS));
+            lines.push(OutputLine.error(CommandErrors.TOO_FEW_ARGS));
+            lines.push(OutputLine.hint(`usage: ${this.constructor.usage}`));
             return { type: "output", lines };
         }
 
-        const recursive = switches.includes("r");
-
-        // --- 2. Separate Source(s) and Destination ---
+        // Seperate sources from single destination
         const destinationPath = params.pop();
         const sourcePaths = params;
         const sourceCount = sourcePaths.length;
 
-        // --- 3. Resolve Destination Path ---
+        // Set switch logic
+        const recursive = switches.includes("r");
+
+        // Resolve destination path - might not exist yet
         const destResolution = this.filesystem.resolvePath(destinationPath, {
             createIntermediary: false, // cp doesn't create intermediate dirs for the target
             targetMustExist: false
         });
-        const dest = {
+        const dest = { // Package destination with renamed attributes for clarity
             status: destResolution.status,
             node: destResolution.targetNode,
             parent: destResolution.parentNode,
@@ -108,38 +99,38 @@ export class CpCommand extends Command {
             errors: destResolution.errors,
         };
 
-        // Error if destination path resolution failed
-        if (
-            dest.status !== RESOLUTION.FOUND &&
-            dest.status !== RESOLUTION.PARENT_FOUND_TARGET_MISSING
-        ) {
+        // Handle critical errors if path was invalid
+        if (dest.status !== RESOLUTION.FOUND &&
+            dest.status !== RESOLUTION.PARENT_FOUND_TARGET_MISSING) 
+        {
             lines.push(...dest.errors.map((e) => new OutputLine(e.type, e.content)));
             return { type: "output", lines };
         }
 
-
-        // --- 4. Validate Source/Destination Combination ---
-        if (sourceCount > 1 && dest.status !== RESOLUTION.FOUND) {
-            // Cant copy multiple sources to a nonexistent destination
-            lines.push(new OutputLine("error", CP_ERRORS.MULTIPLE_SOURCES_NONEXISTENT_DEST));
+        // Make sure multiple sources aren't being copied to nonexistent file
+        // Note: Any nonexistent destination the cp command assumes is a file name and will create
+        // a new file if necessary (it cannot create nonexistent directories)
+        if (sourceCount > 1 && dest.status === RESOLUTION.PARENT_FOUND_TARGET_MISSING) {
+            lines.push(OutputLine.error(CP_ERRORS.MULTIPLE_SOURCES_NONEXISTENT_DEST));
             return { type: "output", lines };
         }
+
+        // Make sure multiple sources aren't being copied to a file
         if (sourceCount > 1 && dest.node && !dest.node.isDirectory) {
             // Cant copy multiple sources to a file
-            lines.push(new OutputLine("error", CP_ERRORS.MULTIPLE_SOURCES_FILE_DEST));
+            lines.push(OutputLine.error(CP_ERRORS.MULTIPLE_SOURCES_FILE_DEST));
             return { type: "output", lines };
         }
 
-
-        // --- 5. Process Each Source ---
+        // Process each provided source individually
         for (const sourcePath of sourcePaths) {
-            
-            // Resolve source path
+
+            // Resolve the source path - it must exist to be copied
             const sourceResolution = this.filesystem.resolvePath(sourcePath, {
                 createIntermediary: false,
                 targetMustExist: true
             });
-            const source = {
+            const source = { // Package source with renamed attributes for clarity
                 status: sourceResolution.status,
                 node: sourceResolution.targetNode,
                 parent: sourceResolution.parentNode,
@@ -147,12 +138,13 @@ export class CpCommand extends Command {
                 errors: sourceResolution.errors,
             };
 
+            // Handle critical resolution errors
             if (source.status !== RESOLUTION.FOUND) {
                 lines.push(...source.errors.map((e) => new OutputLine(e.type, e.content)));
                 continue;
             }
 
-            // --- 6. Handle Source Based on Type ---
+            // Delegate copying logic based on whether the source is a directory or file
             if (source.node.isDirectory) {
                 this._handleDirectoryCopy(dest, source, lines, { recursive, sourceCount });
             } else {
@@ -160,83 +152,91 @@ export class CpCommand extends Command {
             }
         }
 
-        // --- 7. Return Result ---
+        // Return output if errors/hints were generated, otherwise ignore
         return {
-            type: lines.length > 0 ? "output" : "ignore", // Output if errors occurred, ignore otherwise
+            type: lines.length > 0 ? "output" : "ignore",
             lines,
         };
     }
 
-    _handleDirectoryCopy(dest, source, lines, info = {}) {
-        const { recursive } = info;
-
-        // Recursive flag required for directories
-        if (!recursive) {
-            lines.push(new OutputLine("error", CP_ERRORS.RECURSIVE_COPY_REQUIRED));
-            lines.push(new OutputLine("hint", CP_HINTS.RECURSIVE_COPY_REQUIRED));
-            return; // skip this source
+    /**
+     * @brief Handles the logic for copying a source directory.
+     * @param {object} dest - Resolved destination information.
+     * @param {object} source - Resolved source information.
+     * @param {OutputLine[]} lines - Array to push errors/hints to.
+     * @param {{recursive: boolean, sourceCount: number}} options - Copy options.
+     * @private
+     */
+    _handleDirectoryCopy(dest, source, lines, { recursive, sourceCount }) {
+        // Directories require the recursive flag unless empty (check could be added to source.node.clone)
+        if (!recursive && source.node.children.size > 0) { // Added check for non-empty
+            lines.push(OutputLine.error(CP_ERRORS.RECURSIVE_COPY_REQUIRED));
+            lines.push(OutputLine.hint(CP_HINTS.RECURSIVE_COPY_REQUIRED));
+            return; // Skip this source
         }
 
+        // Determine the copy scenario based on destination status
         const copyToExistingDirectory = dest.node && dest.node.isDirectory;
         const copyToExistingFile = dest.node && !dest.node.isDirectory;
-        const copyToNewDirectory =
-            dest.status === RESOLUTION.PARENT_FOUND_TARGET_MISSING;
+        const copyToNewDirectory = dest.status === RESOLUTION.PARENT_FOUND_TARGET_MISSING;
 
-        if (copyToExistingDirectory) {
-            // Try adding the copy as a child if that file doesnt alredy exist in directory
-            try {
-                dest.node.addChild(source.node.clone( { recursive: true }));
-            } catch (childAlreadyExists) {
-                lines.push(new OutputLine("error", childAlreadyExists.message));
-            }
-
-        } else if (copyToExistingFile) {
-            // Can't copy directory to a file, produce error
-            lines.push(new OutputLine("error", CP_ERRORS.DIRECTORY_TO_FILE));
-            return;
-
-        } else if (copyToNewDirectory) {
-            // Create a clone of the source with the new name
-            try {
+        try {
+            if (copyToExistingDirectory) {
+                // Add a clone of the source directory as a child of the destination directory
+                // clone() handles recursive copy; addchild checks for name conflicts.
+                dest.node.addChild(source.node.clone({ recursive: true }));
+            } else if (copyToExistingFile) {
+                // This is an error condition
+                lines.push(OutputLine.error(CP_ERRORS.DIRECTORY_TO_FILE));
+                return;
+            } else if (copyToNewDirectory) {
+                // Create a clone of the source directory with the destination's name
                 dest.parent.addChild(source.node.clone({ newName: dest.fullname, recursive: true }));
-            } catch (childAlreadyExists) {
-                lines.push(new OutputLine("error", childAlreadyExists.message));
             }
+        } catch (error) {
+            // Catch errors from clone() or addChild() (e.g., name conflicts)
+            lines.push(OutputLine.error(error.message || "Failed to copy directory."));
         }
     }
 
-    _handleFileCopy(dest, source, lines, info) {
-        const { sourceCount } = info;
-
+     /**
+     * @brief Handles the logic for copying a source file.
+     * @param {object} dest - Resolved destination information.
+     * @param {object} source - Resolved source information.
+     * @param {OutputLine[]} lines - Array to push errors/hints to.
+     * @param {{sourceCount: number}} options - Copy options (sourceCount might be relevant for overwrite logic).
+     * @private
+     */
+    _handleFileCopy(dest, source, lines, { sourceCount }) {
+        // Determine the copy scenario based on destination status
         const copyToExistingDirectory = dest.node && dest.node.isDirectory;
-        const copyToNewFile = dest.status === RESOLUTION.PARENT_FOUND_TARGET_MISSING && 
-                              sourceCount === 1;
-        const overwriteExistingFile = dest.node && !dest.node.isDirectory && sourceCount === 1;
+        const copyToNewFile = dest.status === RESOLUTION.PARENT_FOUND_TARGET_MISSING;
+        const overwriteExistingFile = dest.node && !dest.node.isDirectory;
 
-        if (copyToExistingDirectory) {
-            // Try adding copy of source file if that file doesnt alredy exist in directory
-            try {
+        try {
+             // Extract potential new name/extension once if needed.
+             const newNameDetails = (copyToNewFile || overwriteExistingFile)
+                ? FSUtil.parseNameAndExtension(dest.fullname)
+                : null;
+
+            if (copyToExistingDirectory) {
+                // Add a clone of the source file into the destination directory.
+                // addChild handles name conflicts.
                 dest.node.addChild(source.node.clone());
-            } catch (childAlreadyExists) { 
-                lines.push(new OutputLine("error", childAlreadyExists.message));
             }
-        }
-        else if (overwriteExistingFile) {
-            // Remove the file to be overwritten, and add copy of source renamed to original dest
-            dest.parent.removeChild(dest.node.getFullName());
-            // We have to seperate name from extension as currently dest.fullname is concatenated
-            const trimmed = FSUtil.parseNameAndExtension(dest.fullname);
-            try {
-                dest.parent.addChild(source.node.clone({ newName: trimmed.name }));
-            } catch (childAlreadyExists) {
-                lines.push(new OutputLine("error", childAlreadyExists.message));
+            else if (overwriteExistingFile) {
+                // Overwriting: Remove existing destination file first.
+                dest.parent.removeChild(dest.node.getFullName());
+                // Add a clone of the source file, renamed to the destination name.
+                dest.parent.addChild(source.node.clone({ newName: newNameDetails.name }));
             }
-        }
-        else if (copyToNewFile) {
-            // We have to seperate name from extension as currently dest.fullname is concatenated
-            const trimmed = FSUtil.parseNameAndExtension(dest.fullname);
-            // Shouldn't have to catch errors since file doesnt already exist
-            dest.parent.addChild(source.node.clone({ newName: trimmed.name }));
+            else if (copyToNewFile) {
+                // Add a clone of the source file to the parent directory, using the new destination name.
+                dest.parent.addChild(source.node.clone({ newName: newNameDetails.name }));
+            }
+        } catch (error) {
+            // Catch errors from clone(), removeChild(), or addChild()
+             lines.push(OutputLine.error(error.message || "Failed to copy file."));
         }
     }
 }

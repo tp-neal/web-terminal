@@ -2,7 +2,7 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: file-util.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Contains helper functions for manipulating file/directory names as well as paths.
@@ -28,9 +28,7 @@ export class FSUtil {
         }
 
         const tokenRegex = /^(\.)?([^.]+)(\.(.+))?$/;
-
         const match = fullName.match(tokenRegex);
-
         const tokens = {
             fullMatch: match[0], // The entire matched string
             leadingDot: match[1], // Group 1: '.' or undefined
@@ -39,7 +37,7 @@ export class FSUtil {
             extension: match[4] // Group 4: The extension without the leading dot (e.g., 'txt', 'tar.gz') or undefined
         };
 
-        const trimmedName = (tokens.leadingDot) ? '.' : '' + tokens.baseName;
+        let trimmedName = ((tokens.leadingDot) ? '.' : '') + tokens.baseName;
         const extension = tokens.extension;
 
         return {
@@ -65,7 +63,6 @@ export class FSUtil {
         }
 
         // Substitute home directory
-        path = path.substring(path.indexOf("~")); // Since ~ is absolute, we ignore the prefix
         path = path.replace("~", this.homePath);
 
         const tokens = path.split("/").filter((item) => item !== "");
@@ -74,6 +71,52 @@ export class FSUtil {
         }
 
         return tokens;
+    }
+
+    /**
+     * @brief Takes an array of destinations in a filepath, and process special cases '.' and '..'
+     * @param {string} path Filepath to be tokenized.
+     * @returns {string[]} Ordered array of directory names to get to file path.
+     */
+    static proccessSpecialCases(tokens) {
+        if (tokens === null) {
+            console.error("Null path provided to tokenizePath()");
+            return null;
+        }
+
+        if (tokens.length === 0) {
+            console.error("Empty path provided to tokenizePath()");
+            return null;
+        }
+
+        // Iterate cases
+        let processedTokens = [];
+        for (const part of tokens) {
+            if (part === '.') {
+                continue; // skip
+            } else if (part === '..') {
+                if (processedTokens.length > 1) {
+                    processedTokens.pop();
+                }
+            } else {
+                processedTokens.push(part);
+            }
+        }
+
+        return processedTokens;
+    }
+
+    /**
+     * @brief Converts home directory path to tilde notation
+     * @param {string} path - Full path to convert
+     * @return {string} Abbreviated path with ~ for home directory
+     */
+    static abbreviateHomeDir(path) {
+        const homeNameLength = this.homePath.length;
+        if (path.substring(0, homeNameLength) === this.homePath) {
+            path = `~` + path.substring(homeNameLength);
+        }
+        return path;
     }
 
     /**

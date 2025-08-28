@@ -2,7 +2,7 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: terminal.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: A web-based terminal emulator with command history and UI controls
@@ -12,12 +12,13 @@ import { ArgParser } from "./util/arg-parser.js";
 import { CommandHistory } from "./command-management/command-history.js";
 import { CommandLine } from "./command-management/command-line.js";
 import { CommandRegistry } from "./command-management/command-registry.js";
-import { CONFIG, ELEMENT_CLASSES, ERROR_MESSAGES } from "./config.js";
+import { CONFIG, ELEMENT_CLASSES } from "./config.js";
 import { Filesystem } from "./fs-management/filesystem.js";
+import { FSUtil } from "./fs-management/fs-util.js";
 import { OutputLine } from "./util/output-line.js";
 import { TestSuite } from "./testing/testsuit.js";
 import { DOMHelper, protectedKeyCombination } from "./util/dom-util.js";
-import { FSUtil } from "./fs-management/fs-util.js";
+import { FilesystemErrors } from "./util/error_messages.js";
 
 /*  Class Definition
  **************************************************************************************************/
@@ -58,10 +59,9 @@ export class Terminal {
         this.filesystem = new Filesystem();
         this.commandHistory = new CommandHistory();
         this.commandRegistry = new CommandRegistry(this, this.filesystem);
-        this.createNewCommandLine(); // call after commandHistory constructor
+        this.createNewCommandLine(); // Call **AFTER** commandHistory constructor
 
         const testSuite = new TestSuite(this);
-        
     }
 
     run(command) {
@@ -215,10 +215,9 @@ export class Terminal {
 
                 case "navigation":
                     // Update currentDirectory if current working directory moved
-                    this.currentDirectory = this.filesystem.cwd.getFilePath();
-                    this.currentDirectory = this.filesystem.abbreviateHomeDir(
-                        this.currentDirectory
-                    );
+                    // Slice the last character off since it contains '/'
+                    this.currentDirectory = this.filesystem.cwd.getFilePath().slice(0,-1);
+                    this.currentDirectory = FSUtil.abbreviateHomeDir(this.currentDirectory);
                     break;
 
                 case "ignore":
@@ -226,9 +225,9 @@ export class Terminal {
 
                 default:
                     this.addLinesToTerminal([
-                        new OutputLine("error", `Unrecognized command: '${command}'`),
+                        OutputLine.error(`Unrecognized command: '${command}'`),
                     ]);
-                    console.error(ERROR_MESSAGES.UNKNOWN_COMMAND_TYPE(type));
+                    console.error(FilesystemErrors.UNKNOWN_COMMAND_TYPE(type));
             }
         }
 
@@ -283,6 +282,6 @@ export class Terminal {
      * @brief Prints version information to the terminal
      */
     printVersionInfo() {
-        this.addLineToTerminal(new OutputLine("general", CONFIG.VERSION_INFO));
+        this.addLineToTerminal(OutputLine.general(CONFIG.VERSION_INFO));
     }
 }

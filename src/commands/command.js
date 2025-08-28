@@ -2,7 +2,7 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: command.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Base class for commands to inherit from.
@@ -15,10 +15,10 @@
  * @brief Base class for all terminal commands
  */
 export class Command {
-    static commandName = "";
-    static description = "";
-    static usage = "";
-    static supportedArgs = [];
+    static commandName = ""; // Name used to invoke command
+    static description = ""; // Brief description of what the command does
+    static usage = ""; // Notation: brackets "[]" means optional, "..." means multiple may be provided
+    static supportedArgs = []; // This is used by commands that dont support switches so do not remove
 
     /**
      * @brief Base constructor for command classes
@@ -29,10 +29,11 @@ export class Command {
 
     /**
      * @brief Execute method to be implemented by all subclasses
-     * @param {string[]} args Array of command arguments
+     * @param {string[]} switches Array of command switches
+     * @param {string[]} params Array of arguments to pass to command
      * @return {Object} Result object with type and content
      */
-    execute(args) {
+    execute(switches, params) {
         // Base execution definintion
     }
 }

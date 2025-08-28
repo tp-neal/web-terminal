@@ -2,15 +2,14 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: mkdir.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Contains implementation of the interpreter's mkdir command
 ==================================================================================================*/
 
-import { ArgParser } from "../util/arg-parser.js";
 import { Command } from "./command.js";
-import { ERROR_MESSAGES } from "../config.js";
+import { CommandErrors, FilesystemErrors } from "../util/error_messages.js";
 import { RESOLUTION } from "../fs-management/filesystem.js";
 import { FSNode } from "../fs-management/fs-node.js";
 import { FSUtil } from "../fs-management/fs-util.js";
@@ -63,79 +62,66 @@ export class MkdirCommand extends Command {
      * @property {string} return.type - 'output' (only if errors occur), or 'ignore'.
      * @property {OutputLine[]} return.lines - Contains error messages or hints.
      */
-    execute(args) {
+    execute(switches, params) {
         const lines = []; // Container for all messages to print to the terminal
 
-        // --- 1. Argument Parsing ---
-        const { switches, params } = ArgParser.argumentSplitter(args);
-
-        // Validate switches
-        for (const switchName of switches) {
-            if (!this.constructor.supportedArgs.includes(switchName)) {
-                lines.push(new OutputLine("error", ERROR_MESSAGES.INVALID_SWITCH(switchName)));
-                return { type: "output", lines };
-            }
-        }
-
-        // Ensure at least one directory name is provided
-        if (params.length === 0) {
-            lines.push(new OutputLine("error", ERROR_MESSAGES.TOO_FEW_ARGS));
-            lines.push(new OutputLine("hint", `usage: ${this.constructor.usage}`));
+        // Check argument count - at least one directory must be provided
+        if (params.length < 0) {
+            lines.push(OutputLine.error(CommandErrors.TOO_FEW_ARGS));
+            lines.push(OutputLine.hint(`usage: ${this.constructor.usage}`));
             return { type: "output", lines };
         }
 
         // Set switch logic
         const createIntermediary = switches.includes("p");
 
-        // --- 2. Process Each Directory Path ---
+        // Proccess each directory path individually
         for (const path of params) {
-            // Attempt to resolve path
-            const {
+            const { // Attempt to resolve path
                 status,
-                targetNode, // Will be null if target is missing, but we will use the status instead
-                parentNode, // The directory where the new dir should be created
-                targetName, // The name of the final directory in the path
+                targetNode, // We use status instead of this to determine nodes existance
+                parentNode,
+                targetName,
                 errors,
             } = this.filesystem.resolvePath(path, {
                 createIntermediary: createIntermediary, // Pass the -p flag status
-                targetMustHaveType: null, // Doesn't matter, will handle existent and nonexistent
+                targetMustExist: false // We dont want the target to exist as we are to create it
             });
 
-            // --- 3. Handle Resolution Results ---
-            // If path resolved successfully and target already exists
+            // Catch case that directory already exists for specific print
             if (status === RESOLUTION.FOUND) {
-                lines.push(new OutputLine("error", ERROR_MESSAGES.FILE_EXISTS(targetName)));
+                lines.push(OutputLine.error(FilesystemErrors.FILE_OR_DIR_EXISTS(targetName)));
                 continue; // Skip to next path
             }
 
-            // If resolution failed for reasons other than the target simply missing
+            // Catch remaining error cases
             if (status !== RESOLUTION.PARENT_FOUND_TARGET_MISSING) {
-                // Add specific errors from resolution attempt
                 lines.push(...errors.map((e) => new OutputLine(e.type, e.content)));
-                if (status === RESOLUTION.NOT_FOUND && !createIntermediary) {
-                    lines.push(new OutputLine("hint", MKDIR_HINTS.MKDIR_CREATE_PARENTS));
+                if (!createIntermediary) {
+                    lines.push(OutputLine.hint(MKDIR_HINTS.MKDIR_CREATE_PARENTS));
                 }
                 continue; // Skip to next path
             }
 
-            // At this point, status must be PARENT_FOUND_TARGET_MISSING
+            // At this point, status must be PARENT_FOUND_TARGET_MISSING meaning the directory does
+            // not yet exist, and the path to it is valid.
 
             // Make sure directory name is valid
             const { valid, reasons } = FSUtil.isValidDirectoryName(targetName);
             if (!valid) {
-                lines.push(new OutputLine("error", ERROR_MESSAGES.INVALID_DIR_NAME(targetName)));
-                if (reasons) lines.push(new OutputLine("error", reasons)); // Add specific reasons if available
+                // If the name is invalid, provided the reasons back to the user
+                lines.push(OutputLine.error(FilesystemErrors.INVALID_DIR_NAME(targetName)));
+                if (reasons) 
+                    lines.push(...reasons.map((e) => OutputLine.error(e))); 
                 continue; // Skip to next path
             }
 
-            // --- 4. Create Directory ---
+            // Create the new directory 
             const newDirectory = new FSNode(targetName, "dir");
             parentNode.addChild(newDirectory);
-            // Successfully created, no output line needed
         }
 
-        // --- 5. Return Result ---
-        // If there are errors, print them, otherwise print nothing
+        // If there were errors/hints provided output, otherwise ignore
         return {
             type: lines.length > 0 ? "output" : "ignore",
             lines,

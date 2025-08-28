@@ -2,16 +2,15 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: clear.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Contains implementation of the interpreter's clear command
 ==================================================================================================*/
 
 import { Command } from "./command.js";
-import { ArgParser } from "../util/arg-parser.js"; // Although unused, good practice
-import { ERROR_MESSAGES } from "../config.js"; // Added for consistency
 import { OutputLine } from "../util/output-line.js";
+import { CommandErrors } from "../util/error_messages.js";
 
 /*==================================================================================================
     Class Definition: [ClearCommand]
@@ -25,6 +24,7 @@ export class ClearCommand extends Command {
     static commandName = "clear";
     static description = "Clear the terminal screen";
     static usage = "clear";
+    
 
     /* Constructor
      **********************************************************************************************/
@@ -45,20 +45,17 @@ export class ClearCommand extends Command {
      * @property {string} return.type - Always 'clear'.
      * @property {OutputLine[]} return.lines - Always undefined or empty for 'clear'.
      */
-    execute(args) {
+    execute(switches, params) {
         const lines = []; // Container for all messages to print to the terminal
 
-        // --- 1. Argument Parsing & Validation ---
-        const { switches, params } = ArgParser.argumentSplitter(args);
-
-        // Check for any arguments (clear doesn't take any)
-        if (switches.length > 0 || params.length > 0) {
-            lines.push(new OutputLine("error", ERROR_MESSAGES.TOO_MANY_ARGS));
-            lines.push(new OutputLine("hint", `usage: ${this.constructor.usage}`));
+        // Check for any arguments - (clear doesn't take any)
+        if (params.length > 0) {
+            lines.push(OutputLine.error(CommandErrors.TOO_MANY_ARGS));
+            lines.push(OutputLine.hint(`usage: ${this.constructor.usage}`));
             return { type: "output", lines };
         }
 
-        // --- 2. Return Clear Instruction ---
+        // Return "clear" to tell terminal to clear display
         return { type: "clear" };
     }
 }

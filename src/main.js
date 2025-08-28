@@ -3,7 +3,7 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: main.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: This is the entry point to the emulator.

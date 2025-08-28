@@ -2,7 +2,7 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: filesystem.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Contains implementation Filesystem, and FSNode (Filesystem node) that represents all files
@@ -10,6 +10,7 @@
 ==================================================================================================*/
 
 import { SUPPORTED_TYPES } from "../config.js";
+import { FSNodeErrors } from "../util/error_messages.js";
 import { FSUtil } from "./fs-util.js";
 
 /*  File/directory Class Definition
@@ -30,7 +31,7 @@ export class FSNode {
 
     content; // Text content of the file (if applicable)
 
-    metadata; // Metadata including creation time, modification time, and size
+    metadata; // Metadata including creation time, modification time, and size  
 
     /**
      * @brief Constructor - creates a new file system node
@@ -58,7 +59,7 @@ export class FSNode {
         if (this.isDirectory && !FSUtil.isValidDirectoryName(this.name)) {
             throw new Error(`Invalid directory name: ${this.name}`);
         } else if (!this.isDirectory && !FSUtil.isValidFileName(this.name)) {
-            throw new Error(`Invalid directory name: ${this.name}`);
+            throw new Error(`Invalid file name: ${this.name}`);
         }
 
         // Set up parent and child information
@@ -66,7 +67,7 @@ export class FSNode {
         this.children = !this.isDirectory ? null : new Map();
 
         // Initialize content
-        this.content = !this.isDirectory && content ? content : null;
+        this.content = !this.isDirectory ? content || '' : null;
 
         // Create metadata
         this.metadata = {
@@ -108,7 +109,7 @@ export class FSNode {
 
             if (this.parent.hasChild(newFullName)) {
                 throw new Error(
-                    `Directory '${this.parent.getFullName()}' already contains '${newFullName}'`
+                    FSNodeErrors.ALREADY_HAS_CHILD(this.parent.getFullName(), newFullName)
                 );
             }
 
@@ -159,7 +160,7 @@ export class FSNode {
      */
     getChild(fullName) {
         if (!this.isDirectory) {
-            throw new Error(`Cannot get children of '${this.getFullName()}: not a directory`);
+            throw new Error(FSNodeErrors.CANT_GET_CHILDREN_OF_DIRECTORY(this.getFullName()));
         }
 
         // Retrieve using the full name as the key
@@ -175,15 +176,13 @@ export class FSNode {
      */
     addChild(child) {
         if (!this.isDirectory) {
-            throw new Error(`Cannot add child to '${this.getFullName()}: not a directory`);
+            throw new Error(FSNodeErrors.CANT_ADD_CHILD_TO_NONDIRECTORY(this.getFullName()));
         }
 
         // Check if the this directory already has the child
         const childFullName = child.getFullName();
         if (this.hasChild(childFullName)) {
-            throw new Error(
-                `Directory '${this.getFullName()}' already contains '${child.getFullName()}'`
-            );
+            throw new Error(FSNodeErrors.ALREADY_HAS_CHILD(this.getFullName(), childFullName));
         }
 
         // Set childs parent directory to this, and add to children map
@@ -201,7 +200,7 @@ export class FSNode {
      */
     removeChild(fullName) {
         if (!this.isDirectory) {
-            throw new Error(`Cannot remove child from '${this.getFullName()}: not a directory`);
+            throw new Error(FSNodeErrors.CANT_REMOVE_CHILD_FROM_NONDIRECTORY(this.getFullName()));
         }
 
         // Get the child node instance
@@ -225,8 +224,8 @@ export class FSNode {
      * @returns {string} Contents of the file, or null if not a file/not set.
      */
     getContent() {
-        if (!this.isDirectory) {
-            throw new Error(`Cannot retrieve content from '${this.getFullName()}': not a file`);
+        if (this.isDirectory) {
+            throw new Error(FSNodeErrors.NON_FILE_CONTENT_RETRIEVAL(this.getFullName()));
         }
 
         return this.content;
@@ -239,7 +238,7 @@ export class FSNode {
      */
     setContent(content) {
         if (!this.isDirectory) {
-            throw new Error(`Cannot set content of '${this.getFullName()}': not a file`);
+            throw new Error(FSNodeErrors.NON_FILE_CONTENT_SET(this.getFullName()));
         }
 
         this.content = content;

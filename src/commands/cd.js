@@ -2,7 +2,7 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: cd.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Contains implementation of the interpreter's cd command
@@ -10,7 +10,7 @@
 
 import { Command } from "./command.js";
 import { OutputLine } from "../util/output-line.js";
-import { ERROR_MESSAGES } from "../config.js";
+import { CommandErrors } from "../util/error_messages.js";
 
 /*==================================================================================================
     Class Definition: [CdCommand]
@@ -46,34 +46,38 @@ export class CdCommand extends Command {
      * @property {string} return.type - 'navigation' on success, 'output' on error.
      * @property {OutputLine[]} return.lines - Contains error messages if navigation fails.
      */
-    execute(args) {
+    execute(switches, params) {
         const lines = []; // Container for potential error messages
 
-        // --- 1. Argument Parsing & Validation ---
-        // Check argument count - cd typically takes 0 or 1 argument (target directory)
-        if (args.length > 1) {
-            lines.push(new OutputLine("error", ERROR_MESSAGES.TOO_MANY_ARGS));
-            lines.push(new OutputLine("hint", `usage: ${this.constructor.usage}`));
+        // Check argument count - takes 0 or 1 arguments (target directory)
+        if (params.length > 1) {
+            lines.push(OutputLine.error(CommandErrors.TOO_MANY_ARGS));
+            lines.push(OutputLine.hint(`usage: ${this.constructor.usage}`));
             return { type: "output", lines };
         }
 
-        // Extract target path (empty string signifies navigating home)
-        const path = args.length > 0 ? args[0] : "~";
-
-        // --- 2. Execute Navigation ---
-        // Ask the file system to navigate the cwd to the specified directory
-        const { success, errorInfo } = this.filesystem.navigateTo(path);
-
-        // --- 3. Handle Result ---
-        // If the navigation failed, the filesystem returns error info to print
-        if (!success) {
-            lines.push(new OutputLine("error", errorInfo));
+        // If no path provided, default path to home directory '~'
+        let path;
+        if (params.length === 0) {
+            path = '~';
+        } else {
+            path = params[0];
         }
 
-        // Return based on success
+        // Ask filesystem to attempt navigation
+        // FIX: In the future, we should ask the filesystem to resolve the path but handle
+        //      everything else with the terminal itself. The terminal should be responsible for
+        //      keeping track of the current working directory, not the filesystem itself.
+        const { success, errors } = this.filesystem.navigateTo(path);
+        if (!success) {
+            lines.push(...errors.map((e) => new OutputLine(e.type, e.content)));
+        }
+
+        // If navigation was successful, return "navigation" to terminal to signal to change \
+        // prompt's current working directory
         return {
             type: success ? "navigation" : "output",
-            lines, // Contains error message only if success is false
+            lines
         };
     }
 }

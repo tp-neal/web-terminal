@@ -2,7 +2,7 @@
 * @proj Web-Based Terminal
 ====================================================================================================
 * @file: ls.js
-* @date: 04/3/2025
+* @date: 04/19/2025
 * @author: Tyler Neal
 * @github: github.com/tn-dev
 * @brief: Contains inmplementation of the interpreter's ls command
@@ -10,7 +10,7 @@
 
 import { ArgParser } from "../util/arg-parser.js";
 import { Command } from "./command.js";
-import { ERROR_MESSAGES } from "../config.js";
+
 import { RESOLUTION } from "../fs-management/filesystem.js";
 import { OutputLine } from "../util/output-line.js";
 
@@ -27,6 +27,9 @@ export class LsCommand extends Command {
     static description = "List directory contents";
     static usage = "ls [switches] [directory]";
     static supportedArgs = ["a"];
+    /* Supported
+     * 'a' - include hidden files and directories
+     */
 
     /*  Constructor
      **********************************************************************************************/
@@ -48,35 +51,22 @@ export class LsCommand extends Command {
      * @property {string} return.type  - Description of type property (e.g., 'output' 'ignore').
      * @property {OutputLine[]} return.lines - Array of lines to be ouptput to the terminal.
      */
-    execute(args) {
-        // --- 0. Variable Initialization ---
+    execute(switches, params) {
         const lines = []; // container for all messages to print to the terminal
 
-        // --- 1. Argument Parsing ---
-        const { switches, params } = ArgParser.argumentSplitter(args);
-
-        // Make sure switches are valid
-        for (const switchName of switches) {
-            if (!this.constructor.supportedArgs.includes(switchName)) {
-                lines.push(new OutputLine("error", ERROR_MESSAGES.INVALID_SWITCH(switchName)));
-                return {
-                    type: "output",
-                    lines,
-                };
-            }
-        }
-
-        // Set switch logic
         const showHidden = switches.includes("a");
 
-        // --- 2. Validate Source ---
+        // Determine and validate target path
+        // Defaults to cwd if no path parameter is given
         const targetPath =
             params && params.length > 0 ? params[0] : this.filesystem.cwd.getFilePath();
 
         const targetResolution = this.filesystem.resolvePath(targetPath, {
-            createIntermediary: false, // cp doesn't create intermediate dirs for the target
-            targetMustExist: false
+            createIntermediary: false, // ls doesn't create missing directories
+            targetMustExist: true      // target must exist to be listed
         });
+
+        // Package results for easier access
         const target = {
             status: targetResolution.status,
             node: targetResolution.targetNode,
@@ -85,15 +75,15 @@ export class LsCommand extends Command {
             errors: targetResolution.errors,
         };
 
-        // If the source wansn't found, push errors encounterd during traversal, and exit
+        // Handle resolution errors (e.g. path not found)
         if (target.status !== RESOLUTION.FOUND) {
             lines.push(...target.errors.map((e) => new OutputLine(e.type, e.content)));
             return { type: "output", lines };
         }
 
-        // --- 3. Handle target based on type ---
+        // Generate output based on whether target is a directory or a file
         if (target.node.isDirectory) {
-            // Add each of the nodes children to output
+            // List directory contents
             for (const [childName, childNode] of target.node.children) {
                 if (!childNode.isHidden || showHidden) {
                     if (childNode.isDirectory) {
@@ -104,13 +94,12 @@ export class LsCommand extends Command {
                 }
             }
         }
-        // Scenario: target is a file
         else {
-            // Just add the target file to output
+            // List a single file
             lines.push(new OutputLine("file", target.node.getFullName()));
         }
 
-        // --- 4. Return Output ---
+        // Determine return type based on number of output lines
         return {
             type: lines.length > 0 ? "output" : "ignore",
             lines,
